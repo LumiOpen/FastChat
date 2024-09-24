@@ -53,6 +53,8 @@ reverse_model_map = {
 
 # lang identification
 import fasttext
+# suppress fasttext warnings
+fasttext.FastText.eprint = lambda x: None
 FASTTEXT_LID_BINARY = "/path/to/fasttext/lid.176.bin"
 LANG_THRESHOLD = 0.5
 
