@@ -54,6 +54,7 @@ reverse_model_map = {
 # lang identification
 import fasttext
 FASTTEXT_LID_BINARY = "/path/to/fasttext/lid.176.bin"
+LANG_THRESHOLD = 0.5
 
 
 @dataclasses.dataclass
@@ -72,6 +73,7 @@ class MatchSingle:
     judge: Judge
     ref_answer: dict = None
     multi_turn: bool = False
+    target_lang: str = None
 
 
 @dataclasses.dataclass
@@ -84,6 +86,7 @@ class MatchPair:
     judge: Judge
     ref_answer: dict = None
     multi_turn: bool = False
+    target_lang: str = None
 
 def detect_language(sent: str):
     lid_model = fasttext.load_model(FASTTEXT_LID_BINARY)
@@ -143,7 +146,7 @@ def load_judge_prompts(prompt_file: str):
     return prompts
 
 
-def run_judge_single(question, answer, judge, ref_answer, multi_turn=False):
+def run_judge_single(question, answer, judge, ref_answer, multi_turn=False, target_lang=None):
     kwargs = {}
     model = judge.model_name
     if ref_answer is not None:
@@ -160,7 +163,7 @@ def run_judge_single(question, answer, judge, ref_answer, multi_turn=False):
         question_lang, question_prob = detect_language(question["turns"][0])
         answer_lang, answer_prob = detect_language(answer["choices"][0]["turns"][0])
     # if the language for question and answer are the same or lid is uncertain, proceed with GPT judgment
-    if question_lang == answer_lang or (question_prob < 0.50 or answer_prob < 0.50):
+    if answer_lang == target_lang and answer_prob > LANG_THRESHOLD:
         if multi_turn:
             user_prompt = judge.prompt_template["prompt_template"].format(
                 question_1=question["turns"][0],
@@ -200,8 +203,8 @@ def run_judge_single(question, answer, judge, ref_answer, multi_turn=False):
     else:
         # question language and answer language are different with high certainty
         user_prompt = "NA"
-        judgment_template = """Language error. Question is {} ({}). Answer is {} ({}). Rating: [[1]] """
-        judgment = judgment_template.format(question_lang, round(question_prob, 2), answer_lang, round(answer_prob, 2))
+        judgment_template = """Language error. Target lang is {}. Question is {} ({}). Answer is {} ({}). Rating: [[1]] """
+        judgment = judgment_template.format(target_lang, question_lang, round(question_prob, 2), answer_lang, round(answer_prob, 2))
 
     if judge.prompt_template["output_format"] == "[[rating]]":
         match = re.search(one_score_pattern, judgment)
@@ -221,18 +224,19 @@ def run_judge_single(question, answer, judge, ref_answer, multi_turn=False):
 
 
 def play_a_match_single(match: MatchPair, output_file: str):
-    question, model, answer, judge, ref_answer, multi_turn = (
+    question, model, answer, judge, ref_answer, multi_turn, target_lang = (
         match.question,
         match.model,
         match.answer,
         match.judge,
         match.ref_answer,
         match.multi_turn,
+        match.target_lang,
     )
 
     if judge.prompt_template["type"] == "single":
         score, user_prompt, judgment = run_judge_single(
-            question, answer, judge, ref_answer, multi_turn=multi_turn
+            question, answer, judge, ref_answer, multi_turn=multi_turn, target_lang=target_lang
         )
 
         question_id = question["question_id"]
@@ -263,7 +267,7 @@ def play_a_match_single(match: MatchPair, output_file: str):
     return result
 
 
-def run_judge_pair(question, answer_a, answer_b, judge, ref_answer, multi_turn=False):
+def run_judge_pair(question, answer_a, answer_b, judge, ref_answer, multi_turn=False, target_lang=None):
     kwargs = {}
     model = judge.model_name
     if ref_answer is not None:
@@ -282,10 +286,11 @@ def run_judge_pair(question, answer_a, answer_b, judge, ref_answer, multi_turn=F
         answer_a_lang, answer_a_prob = detect_language(answer_a["choices"][0]["turns"][0])
         answer_b_lang, answer_b_prob = detect_language(answer_b["choices"][0]["turns"][0])
 
-    if (question_lang == answer_a_lang and question_lang == answer_b_lang) or (question_prob < 0.5 or answer_a_prob < 0.5 or answer_b_prob < 0.5) :
-        message_template = """ Question is {} ({}). Model A is {} ({}). Model B is {} ({}). """
-        message = message_template.format(question_lang, round(question_prob, 2), answer_a_lang, round(answer_a_prob, 2), answer_b_lang, round(answer_b_prob, 2))
-        # print("\nmessage:", message)
+    # print(f"Question is {question_lang} ({question_prob:.2f}). Model A is {answer_a_lang} ({answer_a_prob:.2f}). Model B is {answer_b_lang} ({answer_b_prob:.2f}).")
+    if (answer_a_lang == target_lang and answer_b_lang == target_lang) and (answer_a_prob >= LANG_THRESHOLD and answer_b_prob >= LANG_THRESHOLD) :
+        message_template = """Target is {}. Question is {} ({}). Model A is {} ({}). Model B is {} ({}). """
+        message = message_template.format(target_lang, question_lang, round(question_prob, 2), answer_a_lang, round(answer_a_prob, 2), answer_b_lang, round(answer_b_prob, 2))
+        print("\nmessage:", message)
         # print("\nModel A:", answer_a["choices"][0]["turns"][0])
         # print("\nModel B:", answer_b["choices"][0]["turns"][0])
         if multi_turn:
@@ -314,7 +319,7 @@ def run_judge_pair(question, answer_a, answer_b, judge, ref_answer, multi_turn=F
         conv.append_message(conv.roles[0], user_prompt)
         conv.append_message(conv.roles[1], None)
 
-        if model in ["gpt-3.5-turbo", "gpt-4"]:
+        if model in ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"]:
             conv.set_system_message(system_prompt)
             judgment = chat_completion_openai(model, conv, temperature=0, max_tokens=2048)
         elif model in ANTHROPIC_MODEL_LIST:
@@ -328,14 +333,15 @@ def run_judge_pair(question, answer_a, answer_b, judge, ref_answer, multi_turn=F
             raise ValueError(f"Invalid judge model name: {model}")
     else:
         user_prompt = "NA"
-        judgment_template = """ Language error. Question is {} ({}). Model A is {} ({}). Model B is {} ({}).\n\nFinal verdict: [[{}]] """
-        if answer_a_lang == question_lang and answer_b_lang != question_lang:
+        judgment_template = """Language error. Target lang is {}. Question is {} ({}). Model A is {} ({}). Model B is {} ({}).\n\nFinal verdict: [[{}]] """
+        if (answer_a_lang == target_lang and answer_b_lang != target_lang and answer_a_prob > LANG_THRESHOLD) or (answer_b_lang == target_lang and answer_b_prob < LANG_THRESHOLD and answer_a_lang == target_lang and answer_a_prob > LANG_THRESHOLD):
             winner = "A"
-        elif answer_a_lang != question_lang and answer_b_lang == question_lang:
+        elif (answer_a_lang != target_lang and answer_b_lang == target_lang and answer_b_prob > LANG_THRESHOLD) or (answer_a_lang == target_lang and answer_a_prob < LANG_THRESHOLD and answer_b_lang == target_lang and answer_b_prob > LANG_THRESHOLD):
             winner = "B"
         else:
             winner = "error"
-        judgment = judgment_template.format(question_lang, round(question_prob, 2), answer_a_lang, round(answer_a_prob, 2), answer_b_lang, round(answer_b_prob, 2), winner)
+        judgment = judgment_template.format(target_lang, question_lang, round(question_prob, 2), answer_a_lang, round(answer_a_prob, 2), answer_b_lang, round(answer_b_prob, 2), winner)
+        print(judgment)
 
     if judge.prompt_template["output_format"] == "[[A]]":
         if "[[A]]" in judgment:
@@ -369,7 +375,7 @@ def run_judge_pair(question, answer_a, answer_b, judge, ref_answer, multi_turn=F
 
 
 def play_a_match_pair(match: MatchPair, output_file: str):
-    question, model_1, model_2, answer_1, answer_2, judge, ref_answer, multi_turn = (
+    question, model_1, model_2, answer_1, answer_2, judge, ref_answer, multi_turn, target_lang = (
         match.question,
         match.model_1,
         match.model_2,
@@ -378,14 +384,15 @@ def play_a_match_pair(match: MatchPair, output_file: str):
         match.judge,
         match.ref_answer,
         match.multi_turn,
+        match.target_lang,
     )
 
     if judge.prompt_template["type"] == "pairwise":
         g1_winner, g1_user_prompt, g1_judgment = run_judge_pair(
-            question, answer_1, answer_2, judge, ref_answer, multi_turn=multi_turn
+            question, answer_1, answer_2, judge, ref_answer, multi_turn=multi_turn, target_lang=target_lang
         )
         g2_winner, g2_user_prompt, g2_judgment = run_judge_pair(
-            question, answer_2, answer_1, judge, ref_answer, multi_turn=multi_turn
+            question, answer_2, answer_1, judge, ref_answer, multi_turn=multi_turn, target_lang=target_lang
         )
 
         g1_map = {"A": "model_1", "B": "model_2"}

@@ -326,10 +326,12 @@ if __name__ == "__main__":
     # Play matches
     if args.parallel == 1:
         for match in tqdm(matches):
+            match.target_lang = args.lang
             play_a_match_func(match, output_file=output_file)
     else:
 
         def play_a_match_wrapper(match):
+            match.target_lang = args.lang
             play_a_match_func(match, output_file=output_file)
 
         np.random.seed(0)
