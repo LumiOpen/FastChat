@@ -57,7 +57,7 @@ import fasttext
 fasttext.FastText.eprint = lambda x: None
 FASTTEXT_LID_BINARY = "/path/to/fasttext/lid.176.bin"
 LANG_THRESHOLD = 0.5
-
+LID_MODEL = fasttext.load_model(FASTTEXT_LID_BINARY)
 
 @dataclasses.dataclass
 class Judge:
@@ -91,10 +91,9 @@ class MatchPair:
     target_lang: str = None
 
 def detect_language(sent: str):
-    lid_model = fasttext.load_model(FASTTEXT_LID_BINARY)
     # remove \n from sentences because fasttext processes by line
     sent = sent.replace("\n", " ") 
-    pred = lid_model.predict(sent)
+    pred = LID_MODEL.predict(sent)
     # get top language
     lang = pred[0][0].split("__")[-1] 
     # get prob of top language
@@ -158,14 +157,14 @@ def run_judge_single(question, answer, judge, ref_answer, multi_turn=False, targ
 
     if multi_turn:
         # check if language of question turn 2 and answer turn 2 are the same
-        question_lang, question_prob = detect_language(question["turns"][1])
+        # question_lang, question_prob = detect_language(question["turns"][1])
         answer_lang, answer_prob = detect_language(answer["choices"][0]["turns"][1])
     else:
         # check if language question turn 1 and answer turn 1 are the same
-        question_lang, question_prob = detect_language(question["turns"][0])
+        # question_lang, question_prob = detect_language(question["turns"][0])
         answer_lang, answer_prob = detect_language(answer["choices"][0]["turns"][0])
     # if the language for question and answer are the same or lid is uncertain, proceed with GPT judgment
-    if answer_lang == target_lang and answer_prob > LANG_THRESHOLD:
+    if target_lang == 'en' or (answer_lang == target_lang and answer_prob > LANG_THRESHOLD):
         if multi_turn:
             user_prompt = judge.prompt_template["prompt_template"].format(
                 question_1=question["turns"][0],
@@ -205,8 +204,8 @@ def run_judge_single(question, answer, judge, ref_answer, multi_turn=False, targ
     else:
         # question language and answer language are different with high certainty
         user_prompt = "NA"
-        judgment_template = """Language error. Target lang is {}. Question is {} ({}). Answer is {} ({}). Rating: [[1]] """
-        judgment = judgment_template.format(target_lang, question_lang, round(question_prob, 2), answer_lang, round(answer_prob, 2))
+        judgment_template = """Language error. Target lang is {}. Answer is {} ({}). Rating: [[1]] """
+        judgment = judgment_template.format(target_lang, answer_lang, round(answer_prob, 2))
 
     if judge.prompt_template["output_format"] == "[[rating]]":
         match = re.search(one_score_pattern, judgment)
