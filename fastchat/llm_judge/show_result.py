@@ -6,11 +6,52 @@ import argparse
 import pandas as pd
 import json
 
+def display_result_single_by_category(args):
+    if args.lang != 'en':
+        questions = [json.loads(line) for line in open(f"data/mt_bench/question_{args.lang}.jsonl")]
+    else:
+        questions = [json.loads(line) for line in open("data/mt_bench/question.jsonl")]
+    categories = sorted(set([entry['category'] for entry in questions]))
+    question_ids = {c: [] for c in categories}
+    for category in categories:
+        for entry in questions:
+            if entry['category'] == category:
+                question_ids[category].append(entry['question_id'])
+    if args.input_file is None:
+        if args.lang != 'en':
+            input_file = (
+                f"data/{args.bench_name}/model_judgment/{args.judge_model}_single_{args.lang}.jsonl"
+            )
+        else:
+            input_file = (
+                f"data/{args.bench_name}/model_judgment/{args.judge_model}_single.jsonl"
+            )            
+    else:
+        input_file = args.input_file
+
+    print(f"Input file: {input_file}")
+    df_all = pd.read_json(input_file, lines=True)
+    df = df_all[["model", "score", "turn", "question_id"]]
+    df = df[df["score"] != -1]
+
+    if args.model_list is not None:
+        df = df[df["model"].isin(args.model_list)]
+    
+    for category in categories:
+        print("\n##########", category, "##########")
+        df_1 = df[df["question_id"].isin(question_ids[category])].groupby(["model"]).mean()
+        print(df_1.sort_values(by="score", ascending=False))
+
 def display_result_single(args):
     if args.input_file is None:
-        input_file = (
-            f"data/{args.bench_name}/model_judgment/{args.judge_model}_single.jsonl"
-        )
+        if args.lang != 'en':
+            input_file = (
+                f"data/{args.bench_name}/model_judgment/{args.judge_model}_single_{args.lang}.jsonl"
+            )
+        else:
+            input_file = (
+                f"data/{args.bench_name}/model_judgment/{args.judge_model}_single.jsonl"
+            )            
     else:
         input_file = args.input_file
 
@@ -65,7 +106,6 @@ def display_result_pairwise(args):
     print("model_1:", model_1)
     print("model_2:", model_2) 
     df_all = df_all[(df_all["model_1"] == model_1) & (df_all["model_2"] == model_2)]
-    # print("df_all:", df_all)
     df_errors = df_all[(df_all["g1_winner"] == "error") & (df_all["g2_winner"] == "error")]
     print("errors:", len(df_errors))
 
