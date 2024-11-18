@@ -2298,6 +2298,32 @@ register_conv_template(
     )
 )
 
+# reference: https://huggingface.co/LumiOpen/Poro-34B-chat
+register_conv_template(
+    Conversation(
+        name="poro",
+        system_template="<|im_start|>system\n{system_message}",
+        # system_message="You are a helpful and harmless assistant named Assistant. You can understand and respond to questions in Finnish and English.",
+        roles=("<|im_start|>user", "<|im_start|>assistant"),
+        sep_style=SeparatorStyle.CHATML,
+        sep="<|im_end|>",
+        stop_token_ids=[4, 5],
+    )
+)
+
+# reference: TBA
+register_conv_template(
+    Conversation(
+        name="viking",
+        system_template="<|im_start|>system\n{system_message}",
+        # system_message="You are a helpful and harmless assistant named Assistant. You can understand and respond to questions in Finnish and English.",
+        roles=("<|im_start|>user", "<|im_start|>assistant"),
+        sep_style=SeparatorStyle.CHATML,
+        sep="<|im_end|>",
+        # stop_str="<|im_end|>",
+        stop_token_ids=[22, 23],
+    )
+)
 
 if __name__ == "__main__":
     from fastchat.conversation import get_conv_template

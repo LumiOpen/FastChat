@@ -2499,9 +2499,28 @@ class NoSystemAdapter(BaseModelAdapter):
     def get_default_conv_template(self, model_path: str) -> Conversation:
         return get_conv_template("api_based_default")
 
+class PoroAdapter(BaseModelAdapter):
+    """The model adapter for Poro chat (e.g. https://huggingface.co/LumiOpen/Poro-34B)"""
+
+    def match(self, model_path: str):
+        return "poro" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("poro")
+
+class VikingAdapter(BaseModelAdapter):
+    """The model adapter for Viking chat"""
+
+    def match(self, model_path: str):
+        return "viking" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("viking")
 
 # Note: the registration order matters.
 # The one registered earlier has a higher matching priority.
+register_model_adapter(VikingAdapter)
+register_model_adapter(PoroAdapter)
 register_model_adapter(PeftModelAdapter)
 register_model_adapter(StableVicunaAdapter)
 register_model_adapter(VicunaAdapter)
