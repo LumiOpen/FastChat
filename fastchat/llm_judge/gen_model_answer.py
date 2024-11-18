@@ -105,12 +105,14 @@ def get_model_answers(
         for i in range(num_choices):
             torch.manual_seed(i)
             conv = get_conversation_template(model_id)
+            print("\n\nCONV:\n", conv)
             turns = []
             for j in range(len(question["turns"])):
                 qs = question["turns"][j]
                 conv.append_message(conv.roles[0], qs)
                 conv.append_message(conv.roles[1], None)
                 prompt = conv.get_prompt()
+                print("\n\nPROMPT:\n", prompt)
                 input_ids = tokenizer([prompt]).input_ids
 
                 if temperature < 1e-4:
@@ -171,7 +173,7 @@ def get_model_answers(
                 except RuntimeError as e:
                     print("ERROR question ID: ", question["question_id"])
                     output = "ERROR"
-
+                print("\n\nOUTPUT:\n", output)
                 conv.update_last_message(output)
                 turns.append(output)
 
@@ -187,7 +189,7 @@ def get_model_answers(
                 "choices": choices,
                 "tstamp": time.time(),
             }
-            fout.write(json.dumps(ans_json) + "\n")
+            fout.write(json.dumps(ans_json, ensure_ascii=False) + "\n")
 
 
 def reorg_answer_file(answer_file):
