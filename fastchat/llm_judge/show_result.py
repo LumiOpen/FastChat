@@ -4,7 +4,7 @@ python3 show_result.py --mode [single|pairwise-baseline|pairwise-all]
 """
 import argparse
 import pandas as pd
-
+import json
 
 def display_result_single(args):
     if args.input_file is None:
@@ -38,15 +38,36 @@ def display_result_single(args):
 
 def display_result_pairwise(args):
     if args.input_file is None:
-        input_file = (
-            f"data/{args.bench_name}/model_judgment/{args.judge_model}_pair.jsonl"
-        )
+        if args.lang != "en":
+            input_file = (
+                f"data/{args.bench_name}/model_judgment/{args.judge_model}_pair_{args.lang}.jsonl"
+            )
+        else:
+            input_file = (
+                f"data/{args.bench_name}/model_judgment/{args.judge_model}_pair.jsonl"
+            )
     else:
         input_file = args.input_file
+    questions = [json.loads(line) for line in open("data/mt_bench/question.jsonl")]
+    valid_question_ids = None
+    if args.exclude_category is not None and len(args.exclude_category) > 0:
+        valid_question_ids = [line['question_id'] for line in questions if line['category'] not in args.exclude_category]
 
     print(f"Input file: {input_file}")
     df_all = pd.read_json(input_file, lines=True)
-    df_all = df_all[(df_all["g1_winner"] != "error") & (df_all["g2_winner"] != "error")]
+    if valid_question_ids != None:
+        df_all = df_all[df_all['question_id'].isin(valid_question_ids)]
+    model_1 = args.model_list[0]
+    if args.baseline_model is not None:
+        model_2 = args.baseline_model
+    else:
+        model_2 = args.model_list[1]
+    print("model_1:", model_1)
+    print("model_2:", model_2) 
+    df_all = df_all[(df_all["model_1"] == model_1) & (df_all["model_2"] == model_2)]
+    # print("df_all:", df_all)
+    df_errors = df_all[(df_all["g1_winner"] == "error") & (df_all["g2_winner"] == "error")]
+    print("errors:", len(df_errors))
 
     model_list = (
         df_all["model_1"].unique().tolist() + df_all["model_2"].unique().tolist()
@@ -61,7 +82,7 @@ def display_result_pairwise(args):
         if args.baseline_model is not None:
             if args.baseline_model not in [row["model_1"], row["model_2"]]:
                 continue
-        if row["g1_winner"] == "tie" or row["g1_winner"] != row["g2_winner"]:
+        if row["g1_winner"] == "tie" or row["g1_winner"] != row["g2_winner"] or row['g1_winner'] == 'error':
             list_res.append({"model": row["model_1"], "win": 0, "loss": 0, "tie": 1})
             list_res.append({"model": row["model_2"], "win": 0, "loss": 0, "tie": 1})
         else:
@@ -116,6 +137,14 @@ if __name__ == "__main__":
             "`pairwise-all` runs pairwise comparision between all pairs. "
             "`single` runs single answer grading."
         ),
+    )
+    parser.add_argument("--lang", type=str, default="en", help="supported langs: en, fi, sv, da, no, is")
+    parser.add_argument(
+        "--exclude-category",
+        type=str,
+        nargs="+",
+        default=None,
+        help="exclude some categories from the score summary",
     )
     args = parser.parse_args()
 
