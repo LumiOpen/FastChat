@@ -269,6 +269,12 @@ if __name__ == "__main__":
         default="main",
         help="The model revision to load.",
     )
+    parser.add_argument(
+        "--lang",
+        type=str,
+        default="en",
+        help="Supported langs: en, fi, sv, no, da, is",
+    )
 
     args = parser.parse_args()
 
@@ -277,12 +283,16 @@ if __name__ == "__main__":
 
         ray.init()
 
-    question_file = f"data/{args.bench_name}/question.jsonl"
+    if args.lang != "en":
+        question_file = f"data/{args.bench_name}/question_{args.lang}.jsonl"
+    else:
+        question_file = f"data/{args.bench_name}/question.jsonl"
     if args.answer_file:
         answer_file = args.answer_file
     else:
         answer_file = f"data/{args.bench_name}/model_answer/{args.model_id}.jsonl"
 
+    print(f"Questions: {question_file}")
     print(f"Output to {answer_file}")
 
     run_eval(
