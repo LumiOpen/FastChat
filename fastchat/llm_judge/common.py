@@ -54,6 +54,12 @@ reverse_model_map = {
     "model_2": "model_1",
 }
 
+# lang identification
+import fasttext
+FASTTEXT_LID_BINARY = "/scratch/project_2010225/zosaelai2/lid.176.bin"
+
+# language acceptance thresholds
+LANG_THRESH = 0.5
 
 @dataclasses.dataclass
 class Judge:
@@ -83,7 +89,18 @@ class MatchPair:
     judge: Judge
     ref_answer: dict = None
     multi_turn: bool = False
+    target_lang: str = None
 
+def detect_language(sent: str):
+    lid_model = fasttext.load_model(FASTTEXT_LID_BINARY)
+    # remove \n from sentences because fasttext processes by line
+    sent = sent.replace("\n", " ") 
+    pred = lid_model.predict(sent)
+    # get top language
+    lang = pred[0][0].split("__")[-1] 
+    # get prob of top language
+    prob = pred[1][0]
+    return lang, prob
 
 def load_questions(question_file: str, begin: Optional[int], end: Optional[int]):
     """Load questions from a file."""
@@ -227,12 +244,12 @@ def play_a_match_single(match: MatchSingle, output_file: str):
     if output_file:
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
         with open(output_file, "a") as fout:
-            fout.write(json.dumps(result) + "\n")
+            fout.write(json.dumps(result, ensure_ascii=False) + "\n")
 
     return result
 
 
-def run_judge_pair(question, answer_a, answer_b, judge, ref_answer, multi_turn=False):
+def run_judge_pair(question, answer_a, answer_b, judge, ref_answer, multi_turn=False, target_lang=None):
     kwargs = {}
     model = judge.model_name
     if ref_answer is not None:
@@ -241,43 +258,66 @@ def run_judge_pair(question, answer_a, answer_b, judge, ref_answer, multi_turn=F
             kwargs["ref_answer_2"] = ref_answer["choices"][0]["turns"][1]
 
     if multi_turn:
-        system_prompt = judge.prompt_template["system_prompt"]
-        user_prompt = judge.prompt_template["prompt_template"].format(
-            question_1=question["turns"][0],
-            question_2=question["turns"][1],
-            answer_a_1=answer_a["choices"][0]["turns"][0],
-            answer_b_1=answer_b["choices"][0]["turns"][0],
-            answer_a_2=answer_a["choices"][0]["turns"][1],
-            answer_b_2=answer_b["choices"][0]["turns"][1],
-            **kwargs,
-        )
+        answer_a_lang, answer_a_prob = detect_language(answer_a["choices"][0]["turns"][1])
+        answer_b_lang, answer_b_prob = detect_language(answer_b["choices"][0]["turns"][1])
     else:
-        system_prompt = judge.prompt_template["system_prompt"]
-        user_prompt = judge.prompt_template["prompt_template"].format(
-            question=question["turns"][0],
-            answer_a=answer_a["choices"][0]["turns"][0],
-            answer_b=answer_b["choices"][0]["turns"][0],
-            **kwargs,
-        )
+        answer_a_lang, answer_a_prob = detect_language(answer_a["choices"][0]["turns"][0])
+        answer_b_lang, answer_b_prob = detect_language(answer_b["choices"][0]["turns"][0])
 
-    winner = "error"
+    if (answer_a_lang == target_lang and answer_b_lang == target_lang) and (answer_a_prob >= LANG_THRESH and answer_b_prob >= LANG_THRESH) :
+        message_template = """ Target lang is {}. Model A is {} ({}). Model B is {} ({}). """
+        message = message_template.format(target_lang, answer_a_lang, round(answer_a_prob, 2), answer_b_lang, round(answer_b_prob, 2))
+        print("\nmessage:", message)
 
-    conv = get_conversation_template(model)
-    conv.append_message(conv.roles[0], user_prompt)
-    conv.append_message(conv.roles[1], None)
+        if multi_turn:
+            system_prompt = judge.prompt_template["system_prompt"]
+            user_prompt = judge.prompt_template["prompt_template"].format(
+                question_1=question["turns"][0],
+                question_2=question["turns"][1],
+                answer_a_1=answer_a["choices"][0]["turns"][0],
+                answer_b_1=answer_b["choices"][0]["turns"][0],
+                answer_a_2=answer_a["choices"][0]["turns"][1],
+                answer_b_2=answer_b["choices"][0]["turns"][1],
+                **kwargs,
+            )
+        else:
+            system_prompt = judge.prompt_template["system_prompt"]
+            user_prompt = judge.prompt_template["prompt_template"].format(
+                question=question["turns"][0],
+                answer_a=answer_a["choices"][0]["turns"][0],
+                answer_b=answer_b["choices"][0]["turns"][0],
+                **kwargs,
+            )
 
-    if model in OPENAI_MODEL_LIST:
-        conv.set_system_message(system_prompt)
-        judgment = chat_completion_openai(model, conv, temperature=0, max_tokens=2048)
-    elif model in ANTHROPIC_MODEL_LIST:
-        if system_prompt != "You are a helpful assistant.":
-            user_prompt = "[Instruction]\n" + system_prompt + "\n\n" + user_prompt
-            conv.messages[0][1] = user_prompt
-        judgment = chat_completion_anthropic(
-            model, conv, temperature=0, max_tokens=1024
-        )
+        winner = "error"
+
+        conv = get_conversation_template(model)
+        conv.append_message(conv.roles[0], user_prompt)
+        conv.append_message(conv.roles[1], None)
+
+        if model in OPENAI_MODEL_LIST:
+            conv.set_system_message(system_prompt)
+            judgment = chat_completion_openai(model, conv, temperature=0, max_tokens=2048)
+        elif model in ANTHROPIC_MODEL_LIST:
+            if system_prompt != "You are a helpful assistant.":
+                user_prompt = "[Instruction]\n" + system_prompt + "\n\n" + user_prompt
+                conv.messages[0][1] = user_prompt
+            judgment = chat_completion_anthropic(
+                model, conv, temperature=0, max_tokens=1024
+            )
+        else:
+            raise ValueError(f"Invalid judge model name: {model}")
     else:
-        raise ValueError(f"Invalid judge model name: {model}")
+        user_prompt = "NA"
+        judgment_template = """Language error. Target lang is {}. Question is {} ({}). Model A is {} ({}). Model B is {} ({}).\n\nFinal verdict: [[{}]] """
+        if (answer_a_lang == target_lang and answer_b_lang != target_lang and answer_a_prob >= LANG_THRESH) or (answer_b_lang == target_lang and answer_b_prob < LANG_THRESH and answer_a_lang == target_lang and answer_a_prob >= LANG_THRESH):
+            winner = "A"
+        elif (answer_a_lang != target_lang and answer_b_lang == target_lang and answer_b_prob >= LANG_THRESH) or (answer_a_lang == target_lang and answer_a_prob < LANG_THRESH and answer_b_lang == target_lang and answer_b_prob >= LANG_THRESH):
+            winner = "B"
+        else:
+            winner = "error"
+        judgment = judgment_template.format(target_lang, answer_a_lang, round(answer_a_prob, 2), answer_b_lang, round(answer_b_prob, 2), winner)
+        print(judgment)
 
     if judge.prompt_template["output_format"] == "[[A]]":
         if "[[A]]" in judgment:
@@ -311,7 +351,7 @@ def run_judge_pair(question, answer_a, answer_b, judge, ref_answer, multi_turn=F
 
 
 def play_a_match_pair(match: MatchPair, output_file: str):
-    question, model_1, model_2, answer_1, answer_2, judge, ref_answer, multi_turn = (
+    question, model_1, model_2, answer_1, answer_2, judge, ref_answer, multi_turn, target_lang = (
         match.question,
         match.model_1,
         match.model_2,
@@ -320,14 +360,15 @@ def play_a_match_pair(match: MatchPair, output_file: str):
         match.judge,
         match.ref_answer,
         match.multi_turn,
+        match.target_lang
     )
 
     if judge.prompt_template["type"] == "pairwise":
         g1_winner, g1_user_prompt, g1_judgment = run_judge_pair(
-            question, answer_1, answer_2, judge, ref_answer, multi_turn=multi_turn
+            question, answer_1, answer_2, judge, ref_answer, multi_turn=multi_turn, target_lang=target_lang
         )
         g2_winner, g2_user_prompt, g2_judgment = run_judge_pair(
-            question, answer_2, answer_1, judge, ref_answer, multi_turn=multi_turn
+            question, answer_2, answer_1, judge, ref_answer, multi_turn=multi_turn, target_lang=target_lang
         )
 
         g1_map = {"A": "model_1", "B": "model_2"}
@@ -399,7 +440,7 @@ def play_a_match_pair(match: MatchPair, output_file: str):
     if output_file:
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
         with open(output_file, "a") as fout:
-            fout.write(json.dumps(result) + "\n")
+            fout.write(json.dumps(result, ensure_ascii=False) + "\n")
 
     return result
 
