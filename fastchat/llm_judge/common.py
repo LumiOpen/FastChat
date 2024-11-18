@@ -56,7 +56,7 @@ reverse_model_map = {
 
 # lang identification
 import fasttext
-FASTTEXT_LID_BINARY = "/scratch/project_2010225/zosaelai2/lid.176.bin"
+FASTTEXT_LID_BINARY = "./lid.176.bin"
 
 # language acceptance thresholds
 LANG_THRESH = 0.5
