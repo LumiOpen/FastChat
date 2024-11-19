@@ -208,7 +208,7 @@ if __name__ == "__main__":
         "--first-n", type=int, help="A debug option. Only run the first `n` judgments."
     )
     parser.add_argument(
-        "--lang", type=str, default="en"
+        "--lang", type=str, default="en", help="supported langs: en, fi, sv, no, da, is"
     )
     args = parser.parse_args()
 
@@ -321,7 +321,7 @@ if __name__ == "__main__":
     # Show match stats and prompt enter to continue
     print("Stats:")
     print(json.dumps(match_stat, indent=4))
-    input("Press Enter to confirm...")
+    # input("Press Enter to confirm...")
 
     # Play matches
     if args.parallel == 1:
