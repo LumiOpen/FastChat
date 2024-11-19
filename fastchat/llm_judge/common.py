@@ -77,6 +77,7 @@ class MatchSingle:
     judge: Judge
     ref_answer: dict = None
     multi_turn: bool = False
+    target_lang: str = None
 
 
 @dataclasses.dataclass
@@ -149,7 +150,7 @@ def load_judge_prompts(prompt_file: str):
     return prompts
 
 
-def run_judge_single(question, answer, judge, ref_answer, multi_turn=False):
+def run_judge_single(question, answer, judge, ref_answer, multi_turn=False, target_lang=None):
     kwargs = {}
     model = judge.model_name
     if ref_answer is not None:
@@ -157,37 +158,53 @@ def run_judge_single(question, answer, judge, ref_answer, multi_turn=False):
         if multi_turn:
             kwargs["ref_answer_2"] = ref_answer["choices"][0]["turns"][1]
 
+    # check language
     if multi_turn:
-        user_prompt = judge.prompt_template["prompt_template"].format(
-            question_1=question["turns"][0],
-            question_2=question["turns"][1],
-            answer_1=answer["choices"][0]["turns"][0],
-            answer_2=answer["choices"][0]["turns"][1],
-            **kwargs,
-        )
+        answer_lang, answer_prob = detect_language(answer["choices"][0]["turns"][1])
     else:
-        user_prompt = judge.prompt_template["prompt_template"].format(
-            question=question["turns"][0],
-            answer=answer["choices"][0]["turns"][0],
-            **kwargs,
-        )
+        answer_lang, answer_prob = detect_language(answer["choices"][0]["turns"][0])
 
-    rating = -1
+    if answer_lang == target_lang and answer_prob >= LANG_THRESH:
+        message_template = """ Target lang is {}. Answer is is {} ({}). """
+        message = message_template.format(target_lang, answer_lang, round(answer_prob, 2))
+        print("\nmessage:", message)
+        if multi_turn:
+            user_prompt = judge.prompt_template["prompt_template"].format(
+                question_1=question["turns"][0],
+                question_2=question["turns"][1],
+                answer_1=answer["choices"][0]["turns"][0],
+                answer_2=answer["choices"][0]["turns"][1],
+                **kwargs,
+            )
+        else:
+            user_prompt = judge.prompt_template["prompt_template"].format(
+                question=question["turns"][0],
+                answer=answer["choices"][0]["turns"][0],
+                **kwargs,
+            )
 
-    system_prompt = judge.prompt_template["system_prompt"]
-    conv = get_conversation_template(model)
-    conv.set_system_message(system_prompt)
-    conv.append_message(conv.roles[0], user_prompt)
-    conv.append_message(conv.roles[1], None)
+        rating = -1
 
-    if model in OPENAI_MODEL_LIST:
-        judgment = chat_completion_openai(model, conv, temperature=0, max_tokens=2048)
-    elif model in ANTHROPIC_MODEL_LIST:
-        judgment = chat_completion_anthropic(
-            model, conv, temperature=0, max_tokens=1024
-        )
+        system_prompt = judge.prompt_template["system_prompt"]
+        conv = get_conversation_template(model)
+        conv.set_system_message(system_prompt)
+        conv.append_message(conv.roles[0], user_prompt)
+        conv.append_message(conv.roles[1], None)
+
+        if model in OPENAI_MODEL_LIST:
+            judgment = chat_completion_openai(model, conv, temperature=0, max_tokens=2048)
+        elif model in ANTHROPIC_MODEL_LIST:
+            judgment = chat_completion_anthropic(
+                model, conv, temperature=0, max_tokens=1024
+            )
+        else:
+            raise ValueError(f"Invalid judge model name: {model}")
     else:
-        raise ValueError(f"Invalid judge model name: {model}")
+        # target language and answer language are different with high certainty
+        user_prompt = "NA"
+        judgment_template = """Language error. Target lang is {}. Answer is {} ({}). Rating: [[1]] """
+        judgment = judgment_template.format(target_lang, answer_lang, round(answer_prob, 2))
+        print(judgment)
 
     if judge.prompt_template["output_format"] == "[[rating]]":
         match = re.search(one_score_pattern, judgment)
@@ -207,18 +224,19 @@ def run_judge_single(question, answer, judge, ref_answer, multi_turn=False):
 
 
 def play_a_match_single(match: MatchSingle, output_file: str):
-    question, model, answer, judge, ref_answer, multi_turn = (
+    question, model, answer, judge, ref_answer, multi_turn, target_lang = (
         match.question,
         match.model,
         match.answer,
         match.judge,
         match.ref_answer,
         match.multi_turn,
+        match.target_lang
     )
 
     if judge.prompt_template["type"] == "single":
         score, user_prompt, judgment = run_judge_single(
-            question, answer, judge, ref_answer, multi_turn=multi_turn
+            question, answer, judge, ref_answer, multi_turn=multi_turn, target_lang=target_lang
         )
 
         question_id = question["question_id"]
