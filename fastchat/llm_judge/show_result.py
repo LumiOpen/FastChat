@@ -93,7 +93,9 @@ def display_result_pairwise(args):
     valid_question_ids = None
     if args.exclude_category is not None and len(args.exclude_category) > 0:
         valid_question_ids = [line['question_id'] for line in questions if line['category'] not in args.exclude_category]
-
+    else:
+        valid_question_ids = [line['question_id'] for line in questions]
+        
     print(f"Input file: {input_file}")
     df_all = pd.read_json(input_file, lines=True)
     if valid_question_ids != None:
