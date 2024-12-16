@@ -89,13 +89,15 @@ def display_result_pairwise(args):
             )
     else:
         input_file = args.input_file
-    questions = [json.loads(line) for line in open("data/mt_bench/question.jsonl")]
-    valid_question_ids = None
+    if args.lang == 'en':   
+        questions = [json.loads(line) for line in open("data/mt_bench/question.jsonl")]
+    else:
+        questions = [json.loads(line) for line in open(f"data/mt_bench/question_{args.lang}.jsonl")]
     if args.exclude_category is not None and len(args.exclude_category) > 0:
         valid_question_ids = [line['question_id'] for line in questions if line['category'] not in args.exclude_category]
     else:
         valid_question_ids = [line['question_id'] for line in questions]
-        
+
     print(f"Input file: {input_file}")
     df_all = pd.read_json(input_file, lines=True)
     if valid_question_ids != None:
@@ -108,6 +110,8 @@ def display_result_pairwise(args):
     print("model_1:", model_1)
     print("model_2:", model_2) 
     df_all = df_all[(df_all["model_1"] == model_1) & (df_all["model_2"] == model_2)]
+    df_all = df_all[(df_all["g1_judgment"] != "$ERROR$") | (df_all["g2_judgment"] != "$ERROR$")]
+    # print("df_all:", df_all)
     df_errors = df_all[(df_all["g1_winner"] == "error") & (df_all["g2_winner"] == "error")]
     print("errors:", len(df_errors))
 

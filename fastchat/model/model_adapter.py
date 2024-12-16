@@ -84,13 +84,7 @@ OPENAI_MODEL_LIST = (
     "gpt2-chatbot",
     "im-also-a-good-gpt2-chatbot",
     "im-a-good-gpt2-chatbot",
-    "gpt-4o-mini-2024-07-18",
     "gpt-4o-2024-05-13",
-    "gpt-4o-2024-08-06",
-    "chatgpt-4o-latest-20240903",
-    "chatgpt-4o-latest",
-    "o1-preview",
-    "o1-mini",
 )
 
 
@@ -1124,20 +1118,8 @@ class ChatGPTAdapter(BaseModelAdapter):
             return get_conv_template("gpt-4-turbo-2024-04-09")
         if "gpt2-chatbot" in model_path:
             return get_conv_template("gpt-4-turbo-2024-04-09")
-        if "gpt-4o-2024-05-13" in model_path:
+        if "gpt-4o" in model_path:
             return get_conv_template("gpt-4-turbo-2024-04-09")
-        if "gpt-4o-2024-08-06" in model_path:
-            return get_conv_template("gpt-mini")
-        if "anonymous-chatbot" in model_path:
-            return get_conv_template("gpt-4-turbo-2024-04-09")
-        if "chatgpt-4o-latest" in model_path:
-            return get_conv_template("gpt-4-turbo-2024-04-09")
-        if "gpt-mini" in model_path:
-            return get_conv_template("gpt-mini")
-        if "gpt-4o-mini-2024-07-18" in model_path:
-            return get_conv_template("gpt-mini")
-        if "o1" in model_path:
-            return get_conv_template("api_based_default")
         return get_conv_template("chatgpt")
 
 
@@ -1185,7 +1167,7 @@ class ClaudeAdapter(BaseModelAdapter):
         if "claude-3-sonnet" in model_path:
             return get_conv_template("claude-3-sonnet-20240229")
         if "claude-3-5-sonnet" in model_path:
-            return get_conv_template("claude-3-5-sonnet-20240620-v2")
+            return get_conv_template("claude-3-5-sonnet-20240620")
         if "claude-3-opus" in model_path:
             return get_conv_template("claude-3-opus-20240229")
         return get_conv_template("claude")
@@ -1228,6 +1210,19 @@ class GeminiAdapter(BaseModelAdapter):
 
     def get_default_conv_template(self, model_path: str) -> Conversation:
         return get_conv_template("gemini")
+
+
+class GeminiDevAdapter(BaseModelAdapter):
+    """The model adapter for Gemini 1.5 Pro"""
+
+    def match(self, model_path: str):
+        return "gemini-1.5-pro" in model_path.lower()
+
+    def load_model(self, model_path: str, from_pretrained_kwargs: dict):
+        raise NotImplementedError()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("gemini-dev")
 
 
 class BiLLaAdapter(BaseModelAdapter):
@@ -1580,7 +1575,7 @@ class Llama3Adapter(BaseModelAdapter):
     """The model adapter for Llama-3 (e.g., meta-llama/Meta-Llama-3-8B-Instruct)"""
 
     def match(self, model_path: str):
-        return "llama-3-" in model_path.lower()
+        return "llama-3" in model_path.lower()
 
     def load_model(self, model_path: str, from_pretrained_kwargs: dict):
         model, tokenizer = super().load_model(model_path, from_pretrained_kwargs)
@@ -1590,43 +1585,6 @@ class Llama3Adapter(BaseModelAdapter):
 
     def get_default_conv_template(self, model_path: str) -> Conversation:
         return get_conv_template("llama-3")
-
-
-class Llama31Adapter(BaseModelAdapter):
-    """The model adapter for Llama-3 (e.g., meta-llama/Meta-Llama-3-8B-Instruct)"""
-
-    def match(self, model_path: str):
-        keywords = [
-            "llama-3.1",
-        ]
-        for keyword in keywords:
-            if keyword in model_path.lower():
-                return True
-
-    def load_model(self, model_path: str, from_pretrained_kwargs: dict):
-        model, tokenizer = super().load_model(model_path, from_pretrained_kwargs)
-        model.config.eos_token_id = tokenizer.eos_token_id
-        model.config.pad_token_id = tokenizer.pad_token_id
-        return model, tokenizer
-
-    def get_default_conv_template(self, model_path: str) -> Conversation:
-        if model_path.lower() in [
-            "llama-3.1-8b-instruct",
-            "llama-3.1-70b-instruct",
-            "the-real-chatbot-v2",
-        ]:
-            return get_conv_template("meta-llama-3.1-sp")
-        return get_conv_template("meta-llama-3.1")
-
-
-class GrokAdapter(BaseModelAdapter):
-    def match(self, model_path: str):
-        return "grok" in model_path.lower()
-
-    def get_default_conv_template(self, model_path: str) -> Conversation:
-        if "mini" in model_path.lower():
-            return get_conv_template("grok-2-mini")
-        return get_conv_template("grok-2")
 
 
 class CuteGPTAdapter(BaseModelAdapter):
@@ -2486,19 +2444,6 @@ class RekaAdapter(BaseModelAdapter):
     def get_default_conv_template(self, model_path: str) -> Conversation:
         return get_conv_template("api_based_default")
 
-
-class NoSystemAdapter(BaseModelAdapter):
-    def match(self, model_path: str):
-        keyword_list = ["athene-70b"]
-
-        for keyword in keyword_list:
-            if keyword == model_path.lower():
-                return True
-        return False
-
-    def get_default_conv_template(self, model_path: str) -> Conversation:
-        return get_conv_template("api_based_default")
-
 class PoroAdapter(BaseModelAdapter):
     """The model adapter for Poro chat (e.g. https://huggingface.co/LumiOpen/Poro-34B)"""
 
@@ -2517,8 +2462,117 @@ class VikingAdapter(BaseModelAdapter):
     def get_default_conv_template(self, model_path: str) -> Conversation:
         return get_conv_template("viking")
 
+class LlamaFinnishInstructAdapter(BaseModelAdapter):
+    """The model adapter for llama-7b-finnish-instruct-v0.2 (e.g. https://huggingface.co/Finnish-NLP/llama-7b-finnish-instruct-v0.2)"""
+
+    def match(self, model_path: str):
+        return "llama-7b-finnish" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("llama-7b-finnish-instruct")
+
+class FinnishMistralChatAdapter(BaseModelAdapter):
+    """The model adapter for Mistral CPT"""
+
+    def match(self, model_path: str):
+        return "finnish-mistral-7b-chat" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("finnish-mistral-7b-chat")
+
+class FinnishMistralBaseAdapter(BaseModelAdapter):
+    """The model adapter for Mistral CPT"""
+
+    def match(self, model_path: str):
+        return "finnish-mistral-7b-base" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("finnish-mistral-7b-base")
+
+class FinnishSalamandraBaseAdapter(BaseModelAdapter):
+    """The model adapter for Mistral CPT"""
+
+    def match(self, model_path: str):
+        return "finnish-salamandra" in model_path.lower() or "salamandra-7b-finnish" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("finnish-salamandra")
+
+class FinnishAmberBaseAdapter(BaseModelAdapter):
+    """The model adapter for Mistral CPT"""
+
+    def match(self, model_path: str):
+        return "finnish-amber" in model_path.lower() or "amber-finnish" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("finnish-amber")
+    
+class SwedishMistralChatAdapter(BaseModelAdapter):
+    """The model adapter for Mistral CPT"""
+
+    def match(self, model_path: str):
+        return "swedish-mistral-7b-chat" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("swedish-mistral-7b-chat")
+
+class SwedishMistralBaseAdapter(BaseModelAdapter):
+    """The model adapter for Mistral CPT"""
+
+    def match(self, model_path: str):
+        return "swedish-mistral-7b-base" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("swedish-mistral-7b-base")
+
+class MistralBaseAdapter(BaseModelAdapter):
+    """The model adapter for Mistral CPT"""
+
+    def match(self, model_path: str):
+        return "mistral-7b-v0.2-finnish" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("finnish-mistral-7b-base")
+    
+class SwedishLlama3ChatAdapter(BaseModelAdapter):
+    """The model adapter for Mistral CPT"""
+
+    def match(self, model_path: str):
+        return "swedish-llama-3.1-chat" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("swedish-llama-3.1-chat")
+
+class SwedishLlama3BaseAdapter(BaseModelAdapter):
+    """The model adapter for Mistral CPT"""
+
+    def match(self, model_path: str):
+        return "swedish-llama-3.1-base" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("swedish-llama-3.1-base")
+
+class Llama3BaseAdapter(BaseModelAdapter):
+    """The model adapter for Mistral CPT"""
+
+    def match(self, model_path: str):
+        return "llama-3.1-base" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("finnish-llama-3.1")
+    
 # Note: the registration order matters.
 # The one registered earlier has a higher matching priority.
+register_model_adapter(FinnishAmberBaseAdapter)
+register_model_adapter(FinnishSalamandraBaseAdapter)
+register_model_adapter(FinnishMistralBaseAdapter)
+register_model_adapter(Llama3BaseAdapter)
+register_model_adapter(MistralBaseAdapter)
+register_model_adapter(SwedishLlama3BaseAdapter)
+register_model_adapter(SwedishMistralBaseAdapter)
+register_model_adapter(SwedishLlama3ChatAdapter)
+register_model_adapter(FinnishMistralChatAdapter)
+register_model_adapter(SwedishMistralChatAdapter)
 register_model_adapter(VikingAdapter)
 register_model_adapter(PoroAdapter)
 register_model_adapter(PeftModelAdapter)
@@ -2544,6 +2598,7 @@ register_model_adapter(PhoenixAdapter)
 register_model_adapter(BardAdapter)
 register_model_adapter(PaLM2Adapter)
 register_model_adapter(GeminiAdapter)
+register_model_adapter(GeminiDevAdapter)
 register_model_adapter(GemmaAdapter)
 register_model_adapter(ChatGPTAdapter)
 register_model_adapter(AzureOpenAIAdapter)
@@ -2618,9 +2673,6 @@ register_model_adapter(CllmAdapter)
 register_model_adapter(RekaAdapter)
 register_model_adapter(SmaugChatAdapter)
 register_model_adapter(Llama3Adapter)
-register_model_adapter(Llama31Adapter)
-register_model_adapter(GrokAdapter)
-register_model_adapter(NoSystemAdapter)
 
 # After all adapters, try the default base adapter.
 register_model_adapter(BaseModelAdapter)
