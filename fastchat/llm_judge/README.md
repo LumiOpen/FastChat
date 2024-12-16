@@ -1,8 +1,8 @@
-# LumiOpenREADME
+# LumiOpen README
 
 This MTBench fork is designed for MTBench evaluation for non-English languages. We translated the MTBench questions and reference answers in several languages (Finnish, Swedish, Danish, Icelandic, and Norwegian). 
 
-See scripts for examples on generating model responses and GPT-4 judgments for different languages.
+See the `run_scripts` directory for examples on generating model responses and GPT-4 judgments for different languages.
 
 # FastChat README
 # LLM Judge
