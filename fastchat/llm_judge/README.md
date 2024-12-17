@@ -2,13 +2,13 @@
 
 This MTBench fork is designed for multilingual MTBench evaluation. We translated the MTBench questions and reference answers into several languages (Finnish, Swedish, Danish, Icelandic, and Norwegian) using DeepL. 
 
-See the `run_scripts` directory for examples on generating model responses and GPT-4 judgments for different languages.
+See the `run_scripts` directory for examples on how to generate model responses and GPT-4 judgments for different languages. Basically, add `--lang [LANG_CODE]` when generating model responses and judgments, and displaying results.
 
-This fork checks the response language before passing the responses to GPT-4 (or other judge model) for judging. This requires the [fasttext langid bin](https://fasttext.cc/docs/en/language-identification.html) in the `llm_judge` directory.
+This fork checks the response language before passing the responses to GPT-4 (or other judge model) for judging. This requires the fasttext langid ([lid.176.bin](https://fasttext.cc/docs/en/language-identification.html)) in [fastchat/llm_judge](https://github.com/LumiOpen/FastChat/tree/main/fastchat/llm_judge)
 
 ## Base model few-shot prompting
 
-To test base models with MTBench, we use a few-shot prompt from [URIAL](https://github.com/Re-Align/URIAL/tree/main/urial_prompts), specifically the inst_1k prompt. We translated this prompt into Finnish and Swedish using DeepL. We added a prompt template with this few-shot prompt in [fastchat/conversation.py](https://github.com/LumiOpen/FastChat/blob/main/fastchat/conversation.py). See the `finnish-mistral-7b-base` template for an example.
+To test base models with MTBench, we use a few-shot prompt from [URIAL](https://github.com/Re-Align/URIAL/tree/main/urial_prompts), specifically the inst_1k prompt. We translated this prompt into Finnish and Swedish using DeepL. We added several few-shot prompt templates to [fastchat/conversation.py](https://github.com/LumiOpen/FastChat/blob/main/fastchat/conversation.py). See the `finnish-mistral-7b-base` template for an example.
 
 # FastChat README
 # LLM Judge
