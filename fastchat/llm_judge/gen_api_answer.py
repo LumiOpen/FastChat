@@ -114,10 +114,20 @@ if __name__ == "__main__":
         "--parallel", type=int, default=1, help="The number of concurrent API calls."
     )
     parser.add_argument("--openai-api-base", type=str, default=None)
+    
+    parser.add_argument("--lang", type=str, default="en")
+    
     args = parser.parse_args()
 
     if args.openai_api_base is not None:
         openai.api_base = args.openai_api_base
+    
+    if args.lang != "en":
+        question_file = f"data/{args.bench_name}/question_{args.lang}.jsonl"
+    else:
+        question_file = f"data/{args.bench_name}/question.jsonl"
+    print(f"Load questions from {question_file}")
+    questions = load_questions(question_file, args.question_begin, args.question_end)
 
     question_file = f"data/{args.bench_name}/question.jsonl"
     questions = load_questions(question_file, args.question_begin, args.question_end)

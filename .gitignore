@@ -3,8 +3,9 @@ __pycache__
 *.pyc
 *.egg-info
 dist
-*.venv
+.venv
 .local
+*.fastchat_venv
 
 # Log
 *.log
