@@ -23,6 +23,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--judgment-file", type=str, default="data/mt_bench/model_judgment/gpt-4_single.jsonl")
     parser.add_argument("--lang", type=str, default="en")
+    parser.add_argument("--target-models", type=list, default=None, help="A list of the models you want to plot. If None, all models from the judgement file will be used")
     args = parser.parse_args()
 
     if args.lang != "en":
@@ -31,6 +32,7 @@ if __name__ == "__main__":
         judgment_file = args.judgment_file
     print("judgment_file:", judgment_file)
     df = get_model_df(judgment_file)
+
     all_models = df["model"].unique()
     # print(all_models)
     scores_all = []
@@ -51,9 +53,10 @@ if __name__ == "__main__":
             # scores_all.append({"model": model, "category": cat, "score": score, "winrate": winrate, "wtrate": winrate_adjusted})
             scores_all.append({"model": model, "category": cat, "score": score})
 
-    target_models = [
-
-    ]
+    if args.target_models and type(args.target_models) == list:
+        target_models = args.target_models.tolist()
+    else:
+        target_models = all_models.tolist()
 
     scores_target = [scores_all[i] for i in range(len(scores_all)) if scores_all[i]["model"] in target_models]
     # sort by target_models
@@ -82,4 +85,4 @@ if __name__ == "__main__":
     )
 
     # fig.write_image("fig.png", width=900, height=600, scale=1)
-    fig.write_html(f"mtbench_{args.lang}_poro_argilla.html")
+    fig.write_html(f"data/mt_bench/plots/{args.lang}_{'-'.join(target_models)}.html")
