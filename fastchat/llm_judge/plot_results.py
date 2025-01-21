@@ -23,7 +23,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--judgment-file", type=str, default="data/mt_bench/model_judgment/gpt-4_single.jsonl")
     parser.add_argument("--lang", type=str, default="en")
-    parser.add_argument("--target-models", type=list, default=None, help="A list of the models you want to plot. If None, all models from the judgement file will be used")
+    parser.add_argument("--target-models", type=str, default=None, help="A comma-delimited list of the models you want to plot. If None, all models from the judgement file will be used")
     args = parser.parse_args()
 
     if args.lang != "en":
@@ -53,10 +53,19 @@ if __name__ == "__main__":
             # scores_all.append({"model": model, "category": cat, "score": score, "winrate": winrate, "wtrate": winrate_adjusted})
             scores_all.append({"model": model, "category": cat, "score": score})
 
-    if args.target_models and type(args.target_models) == list:
-        target_models = args.target_models.tolist()
+    if args.target_models and type(args.target_models) == str:
+        target_models = [model_name.strip() for model_name in args.target_models.split(',')]
     else:
         target_models = all_models.tolist()
+    
+    #check if target models contains model that are not in the output
+    intersection = set(target_models).intersection(all_models)
+    if len(intersection) < len(set(target_models)):
+        [print(model, "not in output") for model in target_models if model not in all_models]
+    if len(intersection) < 1:
+            raise ValueError(f"None of the target models are in the output: {', '.join(map(str, target_models))}")
+    target_models = list(intersection)
+    print(f"Plotting target models: {', '.join(map(str, target_models))}")
 
     scores_target = [scores_all[i] for i in range(len(scores_all)) if scores_all[i]["model"] in target_models]
     # sort by target_models
@@ -64,7 +73,6 @@ if __name__ == "__main__":
 
     df_score = pd.DataFrame(scores_target)
     df_score = df_score[df_score["model"].isin(target_models)]
-
 
     rename_map = {
 
