@@ -2138,6 +2138,21 @@ register_conv_template(
     )
 )
 
+# reference: TBA
+register_conv_template(
+    Conversation(
+        name="europa",
+        system_template="<|im_start|>system\n{system_message}",
+        #system_message="You are a helpful and harmless assistant named Assistant. You can understand and respond to questions in the following languages and you answer in the language of the question: Bulgarian Croatian, Czech, Danish, Dutch, English, Estonian, Finnish, French, German, Greek, Hungarian, Icelandic, Irish, Italian, Latvian, Lithuanian, Maltese, Norwegian_bokmal, New Norwegian, Polish, Portuguese, Romanian, Slovak, Slovene, Spanish, Swedish""",
+        roles=("<|im_start|>user", "<|im_start|>assistant"),
+        sep_style=SeparatorStyle.CHATML,
+        sep="<|im_end|>",
+        # stop_str="<|im_end|>",
+        stop_token_ids=[4, 5],
+
+    )
+)
+
 # continued pretraining of Mistral-7B on Finnish and English
 register_conv_template(
     Conversation(

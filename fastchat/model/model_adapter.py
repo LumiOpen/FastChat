@@ -2453,6 +2453,15 @@ class PoroAdapter(BaseModelAdapter):
     def get_default_conv_template(self, model_path: str) -> Conversation:
         return get_conv_template("poro")
 
+class EuropaAdapter(BaseModelAdapter):
+    """The model adapter for Europa chat"""
+
+    def match(self, model_path: str):
+        return "europa" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("europa")
+
 class VikingAdapter(BaseModelAdapter):
     """The model adapter for Viking chat"""
 
@@ -2575,6 +2584,7 @@ register_model_adapter(FinnishMistralChatAdapter)
 register_model_adapter(SwedishMistralChatAdapter)
 register_model_adapter(VikingAdapter)
 register_model_adapter(PoroAdapter)
+register_model_adapter(EuropaAdapter)
 register_model_adapter(PeftModelAdapter)
 register_model_adapter(StableVicunaAdapter)
 register_model_adapter(VicunaAdapter)
