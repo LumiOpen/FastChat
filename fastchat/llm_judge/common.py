@@ -11,6 +11,11 @@ import re
 import time
 from typing import Optional
 
+import pandas as pd
+import fasttext
+from huggingface_hub import hf_hub_download
+from heliport import Identifier
+
 import openai
 import anthropic
 
@@ -768,3 +773,49 @@ def get_model_list(answer_dir):
     file_paths = glob.glob(f"{answer_dir}/*.jsonl")
     file_names = [os.path.splitext(os.path.basename(f))[0] for f in file_paths]
     return file_names
+
+def get_lang_code_dict(value:str) -> dict:
+    """
+    Read in a csv file with alpha 2 and 3 language codes and the language name
+    Given either a language name or an alpha 2 or alpha 3 code, return a dict of the row or None
+    Query the dict with the desired value, either: alpha3-b, alpha3-t, alpha2, English, French
+    """
+    # Read the CSV file into a DataFrame
+    df = pd.read_csv('/scratch/project_462000353/maribarr/FastChat/fastchat/llm_judge/data/lang_codes.csv', 
+                     comment='#')
+    row = None     
+    for i in range(df.shape[1]):
+        # Check if the value is in either column
+        if value in df.iloc[:, i].values:
+            row = df[df.iloc[:, i] == value]
+            # returns the first match - it will not work if there are ambiguities
+            row_dict = row.to_dict(orient='records')[0]
+            return row_dict
+    if row == None:
+        return {}
+
+def detect_language_fasttext(text):
+    """Given a text, it returns the FastText prediction as NLLB language code, e.g., Latn-eng
+    """
+    model_path = hf_hub_download(repo_id="facebook/fasttext-language-identification", filename="model.bin")
+    model = fasttext.load_model(model_path)
+
+    lab, score = model.predict(text)
+    first = lab[0]
+    return first
+
+def detect_language_glotlid(text):
+    """Given a text, it returns the Glotlid prediction as NLLB language code, e.g., Latn-eng
+    """
+    model_path = hf_hub_download(repo_id="cis-lmu/glotlid", filename="model.bin")   
+    model = fasttext.load_model(model_path)
+
+    lab, score = model.predict(text)
+    first = lab[0]
+    return first
+
+def detect_language_heli(text):
+    i = Identifier()
+    three_ltr_code = i.identify(text)
+    return three_ltr_code
+
