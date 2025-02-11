@@ -50,8 +50,13 @@ if __name__ == "__main__":
         print('Language not found')
     else:
         print(f"Target language: {tgt_lang}, {tgt_lang_eng}, {tgt_lang_3_ltr}")
-
-    df = pd.read_json(args.input_file, lines=True)
+    
+    # english does not use the suffix
+    if tgt_lang == 'en':
+        input_file = args.input_file.str.replace('_en', '')
+    else:
+        input_file = args.input_file
+    df = pd.read_json(input_file, lines=True)
 
     # Ensure that 'turns' is a column
     df['turns'] = df['choices'].apply(lambda x: x[0]['turns'])
