@@ -1,18 +1,18 @@
 The source of these translations are
 	
 	Translation_source
-bg	Opus
+bg	DeepL
 hr	nllb-200-distilled-1.3B
-cs	Opus
+cs	DeepL
 da	Manually checked DeepL
-nl	Opus
+nl	DeepL
 en	original
-et	Opus
+et	DeepL
 fi	Manually checked DeepL
-fr	Opus
-de	Opus
-el	Opus
-hu	Opus
+fr	DeepL
+de	DeepL
+el	DeepL
+hu	DeepL
 is	Manually translated by Miðeind
 ga	Opus
 it	Opus
