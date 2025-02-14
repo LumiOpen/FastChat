@@ -332,7 +332,7 @@ def run_judge_pair(question, answer_a, answer_b, judge, ref_answer, multi_turn=F
             raise ValueError(f"Invalid judge model name: {model}")
     else:
         user_prompt = "NA"
-        judgment_template = """Language error. Target lang is {}. Question is {} ({}). Model A is {} ({}). Model B is {} ({}).\n\nFinal verdict: [[{}]] """
+        judgment_template = """Language error. Target lang is {}. Model A is {} ({}). Model B is {} ({}).\n\nFinal verdict: [[{}]] """
         if (answer_a_lang == target_lang and answer_b_lang != target_lang and answer_a_prob >= LANG_THRESH) or (answer_b_lang == target_lang and answer_b_prob < LANG_THRESH and answer_a_lang == target_lang and answer_a_prob >= LANG_THRESH):
             winner = "A"
         elif (answer_a_lang != target_lang and answer_b_lang == target_lang and answer_b_prob >= LANG_THRESH) or (answer_a_lang == target_lang and answer_a_prob < LANG_THRESH and answer_b_lang == target_lang and answer_b_prob >= LANG_THRESH):
