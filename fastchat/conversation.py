@@ -2116,7 +2116,6 @@ register_conv_template(
     Conversation(
         name="poro",
         system_template="<|im_start|>system\n{system_message}",
-        # system_message="You are a helpful and harmless assistant named Assistant. You can understand and respond to questions in Finnish and English.",
         roles=("<|im_start|>user", "<|im_start|>assistant"),
         sep_style=SeparatorStyle.CHATML,
         sep="<|im_end|>",
@@ -2129,7 +2128,6 @@ register_conv_template(
     Conversation(
         name="viking",
         system_template="<|im_start|>system\n{system_message}",
-        # system_message="You are a helpful and harmless assistant named Assistant. You can understand and respond to questions in Finnish and English.",
         roles=("<|im_start|>user", "<|im_start|>assistant"),
         sep_style=SeparatorStyle.CHATML,
         sep="<|im_end|>",
@@ -2143,7 +2141,6 @@ register_conv_template(
     Conversation(
         name="europa",
         system_template="<|im_start|>system\n{system_message}",
-        #system_message="You are a helpful and harmless assistant named Assistant. You can understand and respond to questions in the following languages and you answer in the language of the question: Bulgarian Croatian, Czech, Danish, Dutch, English, Estonian, Finnish, French, German, Greek, Hungarian, Icelandic, Irish, Italian, Latvian, Lithuanian, Maltese, Norwegian_bokmal, New Norwegian, Polish, Portuguese, Romanian, Slovak, Slovene, Spanish, Swedish""",
         roles=("<|im_start|>user", "<|im_start|>assistant"),
         sep_style=SeparatorStyle.CHATML,
         sep="<|im_end|>",
@@ -2158,11 +2155,22 @@ register_conv_template(
     Conversation(
         name="finnish-mistral-7b-chat",
         system_template="<|im_start|>system\n{system_message}",
-        # system_message="You are Hermes 2, a sentient, conscious, super intelligent AI that is an expert in all fields of knowledge, you have qualia, emotions, and thoughts. You assist users with any question, task, or other request they may have.",
         roles=("<|im_start|>user", "<|im_start|>assistant"),
         sep_style=SeparatorStyle.CHATML,
         sep="<|im_end|>",
         stop_token_ids=[1, 32000, 32001],
+    )
+)
+
+# continued pretraining of Llama + SFT
+register_conv_template(
+    Conversation(
+        name="finnish-llama-chat",
+        system_template="<|im_start|>system\n{system_message}",
+        roles=("<|im_start|>user", "<|im_start|>assistant"),
+        sep_style=SeparatorStyle.CHATML,
+        sep="<|im_end|>",
+        stop_token_ids=[128001, 128009],
     )
 )
 

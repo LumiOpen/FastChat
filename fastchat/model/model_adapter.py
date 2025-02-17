@@ -2580,8 +2580,18 @@ class FinnishLlama3BaseAdapter(BaseModelAdapter):
     def get_default_conv_template(self, model_path: str) -> Conversation:
         return get_conv_template("finnish-llama-3.1")
     
+class FinnishLlama3ChatAdapter(BaseModelAdapter):
+    """The model adapter for Llama CPT"""
+
+    def match(self, model_path: str):
+        return "finnish-llama-chat" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("finnish-llama-chat")
+    
 # Note: the registration order matters.
 # The one registered earlier has a higher matching priority.
+register_model_adapter(FinnishLlama3ChatAdapter)
 register_model_adapter(FinnishLlama3BaseAdapter)
 register_model_adapter(FinnishAmberBaseAdapter)
 register_model_adapter(FinnishSalamandraBaseAdapter)
