@@ -313,8 +313,8 @@ new,null,null,Nepal Bhasa; Newari,nepal bhasa; newari
 nia,null,null,Nias,nias
 nic,null,null,Niger-Kordofanian languages,"nigéro-kordofaniennes, langues"
 niu,null,null,Niuean,niué
-nno,null,nn,"Norwegian Nynorsk; Nynorsk, Norwegian","norvégien nynorsk; nynorsk, norvégien"
-nob,null,nb,"Bokmål, Norwegian; Norwegian Bokmål",norvégien bokmål
+nno,null,nn,"Norwegian Nynorsk","norvégien nynorsk; nynorsk, norvégien"
+nob,null,nb,"Norwegian Bokmål",norvégien bokmål
 nog,null,null,Nogai,nogaï; nogay
 non,null,null,"Norse, Old","norrois, vieux"
 nor,null,no,Norwegian,norvégien
@@ -361,7 +361,7 @@ rar,null,null,Rarotongan; Cook Islands Maori,rarotonga; maori des îles Cook
 roa,null,null,Romance languages,"romanes, langues"
 roh,null,rm,Romansh,romanche
 rom,null,null,Romany,tsigane
-rum,ron,ro,Romanian; Moldavian; Moldovan,roumain; moldave
+rum,ron,ro,Romanian,roumain; moldave
 run,null,rn,Rundi,rundi
 rup,null,null,Aromanian; Arumanian; Macedo-Romanian,aroumain; macédo-roumain
 rus,null,ru,Russian,russe
