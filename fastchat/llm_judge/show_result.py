@@ -5,6 +5,8 @@ python3 show_result.py --mode [single|pairwise-baseline|pairwise-all]
 import argparse
 import pandas as pd
 import json
+pd.set_option('display.max_columns', None)
+
 
 def display_result_single_by_category(args):
     if args.lang != 'en':
