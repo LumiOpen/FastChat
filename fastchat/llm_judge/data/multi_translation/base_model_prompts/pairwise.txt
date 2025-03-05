@@ -1,0 +1,15 @@
+Pairwise rating of translation quality from English to another language. 
+
+
+Source sentence: I believe we found gold in the hotel
+Candidate 1: Jeg tror vi fandt guld i hotellet
+Candidate 2: Jeg tror vi fandt guld på hotellet
+Rating: Candidate 2
+
+
+Source sentence: How long time have we been eating broccoli?
+Candidate 1: Hvor lang tid har vi spist broccoli?
+Candidate 2: Hvor lang tid siden har vi spist broccoli?
+Rating: Candidate 1
+
+

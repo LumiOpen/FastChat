@@ -1,0 +1,50 @@
+Source sentence: My mother was a unicorn
+Translation: Meine mytter war ein unicorn
+Rating: 2
+
+
+Source sentence: Why do people like comedy movies?
+Translation: Hvorfor kan folk lide komediefilm
+Rating: 1
+
+
+Source sentence: According to Lynch, who has lived in Malmö, Sweden for around three years, it was actually his wife who came up with the idea for the trip.
+Translation: According to Lynch, who has lived in Malmö, Sweden for around three years, it was actually his wife who came up with the idea for the trip.
+Rating: 3
+
+
+Source sentence: Why do people like comedy movies?
+Translation: Este hombre dejó su trabajo corporativo por viajar por el mundo fotografiando peros.
+Rating: 3
+
+
+Source sentence: But he hadn’t imagined that he could actually turn this into a career.
+Translation: Men han hadde ikke forestilt seg at han faktisk kunne gjøre dette til en karriere.
+Rating: 1
+
+
+Source sentence: In 2022, he quit his job to travel the world documenting the varying bonds between dogs and people.
+Translation: In 2022, he quit his job to travel the world documenting the varying bonds between dogs and people.
+Rating: 3
+
+
+Source sentence: How was I ever going to make it to the mountain top?
+Translation: Wie vürde Ich immer zu der mountain top?
+Rating: 2
+
+
+Source sentence: I was ready to freeze or sweat?
+Translation: J'étais prêt à geler ou à transpirer
+Rating: 1
+
+
+Source sentence: Where is the cheese?
+Translation: Var är osten?
+Rating: 1
+
+
+Source sentence: When Delphyne Dabezies first announced her plans to launch Africa’s first caviar manufacturer, some in the luxury food industry were incredulous.
+Translation: Quando a Delphyne Dabezies anunciou pela primeira vez os seus planos para lançar o primeiro fabricante de caviar de América, alguns membros da indústria alimentar de luxo ficaram suspeito.
+Rating: 2
+
+
