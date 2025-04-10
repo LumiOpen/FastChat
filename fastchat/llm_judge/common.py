@@ -11,11 +11,6 @@ import re
 import time
 from typing import Optional
 
-import pandas as pd
-import fasttext
-from huggingface_hub import hf_hub_download
-from heliport import Identifier
-
 import openai
 import anthropic
 
@@ -59,12 +54,6 @@ reverse_model_map = {
     "model_2": "model_1",
 }
 
-# lang identification
-import fasttext
-FASTTEXT_LID_BINARY = "./lid.176.bin"
-
-# language acceptance thresholds
-LANG_THRESH = 0.5
 
 @dataclasses.dataclass
 class Judge:
@@ -97,11 +86,55 @@ class MatchPair:
     multi_turn: bool = False
     target_lang: str = None
 
+# lang identification
+import fasttext
+fasttext.FastText.eprint = lambda x: None
+FASTTEXT_LID_BINARY = "./lid.176.bin"
+LID_MODEL = fasttext.load_model(FASTTEXT_LID_BINARY)
+GLOTLID_PATH = "./model.bin"
+GLOT_MODEL = fasttext.load_model(GLOTLID_PATH)
+LANG_THRESH = 0.5
+
+GLOT_LANG_DICT = {
+    'bul': 'bg',  # Bulgarian
+    'ces': 'cs',  # Czech
+    'dan': 'da',  # Danish
+    'deu': 'de',  # German
+    'ell': 'el',  # Greek
+    'eng': 'en',  # English
+    'spa': 'es',  # Spanish
+    'est': 'et',  # Estonian
+    'fin': 'fi',  # Finnish
+    'fra': 'fr',  # French
+    'gle': 'ga',  # Irish
+    'hrv': 'hr',  # Croatian
+    'hun': 'hu',  # Hungarian
+    'ita': 'it',  # Italian
+    'lit': 'lt',  # Lithuanian
+    'lav': 'lv',  # Latvian
+    'mlt': 'mt',  # Maltese
+    'nld': 'nl',  # Dutch
+    'pol': 'pl',  # Polish
+    'por': 'pt',  # Portuguese
+    'ron': 'ro',  # Romanian
+    'slk': 'sk',  # Slovak
+    'slv': 'sl',  # Slovenian
+    'swe': 'sv'   # Swedish
+}
+
+def detect_language_glotlid(text: str):  
+    # remove newline from input text
+    text = text.replace("\n", " ")
+    lab, score = GLOT_MODEL.predict(text)
+    lang_code = lab[0].split("__")[-1][:3]
+    score = score[0]
+    return lang_code, score
+
 def detect_language(sent: str):
-    lid_model = fasttext.load_model(FASTTEXT_LID_BINARY)
+    # lid_model = fasttext.load_model(FASTTEXT_LID_BINARY)
     # remove \n from sentences because fasttext processes by line
     sent = sent.replace("\n", " ") 
-    pred = lid_model.predict(sent)
+    pred = LID_MODEL.predict(sent)
     # get top language
     lang = pred[0][0].split("__")[-1] 
     # get prob of top language
@@ -162,18 +195,20 @@ def run_judge_single(question, answer, judge, ref_answer, multi_turn=False, targ
         kwargs["ref_answer_1"] = ref_answer["choices"][0]["turns"][0]
         if multi_turn:
             kwargs["ref_answer_2"] = ref_answer["choices"][0]["turns"][1]
-
-    # check language
     if multi_turn:
-        answer_lang, answer_prob = detect_language(answer["choices"][0]["turns"][1])
+        # check if language of question turn 2 and answer turn 2 are the same
+        # question_lang, question_prob = detect_language(question["turns"][1])
+        # answer_lang, answer_prob = detect_language(answer["choices"][0]["turns"][1])
+        answer_lang, answer_prob = detect_language_glotlid(answer["choices"][0]["turns"][1])
     else:
-        answer_lang, answer_prob = detect_language(answer["choices"][0]["turns"][0])
-
-    if answer_lang == target_lang and answer_prob >= LANG_THRESH:
-        message_template = """ Target lang is {}. Answer is is {} ({}). """
-        message = message_template.format(target_lang, answer_lang, round(answer_prob, 2))
-        print("\nmessage:", message)
-        if multi_turn:
+        # check if language question turn 1 and answer turn 1 are the same
+        # question_lang, question_prob = detect_language(question["turns"][0])
+        # answer_lang, answer_prob = detect_language(answer["choices"][0]["turns"][0])
+        answer_lang, answer_prob = detect_language_glotlid(answer["choices"][0]["turns"][0])
+    if answer_lang in GLOT_LANG_DICT:
+        answer_lang = GLOT_LANG_DICT[answer_lang]
+    if target_lang == 'en' or (answer_lang == target_lang and answer_prob > LANG_THRESH):
+        if multi_turn: 
             user_prompt = judge.prompt_template["prompt_template"].format(
                 question_1=question["turns"][0],
                 question_2=question["turns"][1],
@@ -197,6 +232,8 @@ def run_judge_single(question, answer, judge, ref_answer, multi_turn=False, targ
         conv.append_message(conv.roles[1], None)
 
         if model in OPENAI_MODEL_LIST:
+            if model == "gpt-4":
+                model = "gpt-4-0613"
             judgment = chat_completion_openai(model, conv, temperature=0, max_tokens=2048)
         elif model in ANTHROPIC_MODEL_LIST:
             judgment = chat_completion_anthropic(
@@ -205,11 +242,10 @@ def run_judge_single(question, answer, judge, ref_answer, multi_turn=False, targ
         else:
             raise ValueError(f"Invalid judge model name: {model}")
     else:
-        # target language and answer language are different with high certainty
+        # question language and answer language are different with high certainty
         user_prompt = "NA"
         judgment_template = """Language error. Target lang is {}. Answer is {} ({}). Rating: [[1]] """
         judgment = judgment_template.format(target_lang, answer_lang, round(answer_prob, 2))
-        print(judgment)
 
     if judge.prompt_template["output_format"] == "[[rating]]":
         match = re.search(one_score_pattern, judgment)
@@ -224,6 +260,7 @@ def run_judge_single(question, answer, judge, ref_answer, multi_turn=False, targ
         raise ValueError(
             f"invalid output format: {judge.prompt_template['output_format']}"
         )
+    
 
     return rating, user_prompt, judgment
 
@@ -279,19 +316,25 @@ def run_judge_pair(question, answer_a, answer_b, judge, ref_answer, multi_turn=F
         kwargs["ref_answer_1"] = ref_answer["choices"][0]["turns"][0]
         if multi_turn:
             kwargs["ref_answer_2"] = ref_answer["choices"][0]["turns"][1]
-
     if multi_turn:
-        answer_a_lang, answer_a_prob = detect_language(answer_a["choices"][0]["turns"][1])
-        answer_b_lang, answer_b_prob = detect_language(answer_b["choices"][0]["turns"][1])
+        # check if language of question turn 2 and answer turn 2 are the same
+        # question_lang, question_prob = detect_language(question["turns"][1])
+        answer_a_lang, answer_a_prob = detect_language_glotlid(answer_a["choices"][0]["turns"][1])
+        answer_b_lang, answer_b_prob = detect_language_glotlid(answer_b["choices"][0]["turns"][1])
     else:
-        answer_a_lang, answer_a_prob = detect_language(answer_a["choices"][0]["turns"][0])
-        answer_b_lang, answer_b_prob = detect_language(answer_b["choices"][0]["turns"][0])
-
+        # check if language question turn 1 and answer turn 1 are the same
+        # question_lang, question_prob = detect_language(question["turns"][0])
+        answer_a_lang, answer_a_prob = detect_language_glotlid(answer_a["choices"][0]["turns"][0])
+        answer_b_lang, answer_b_prob = detect_language_glotlid(answer_b["choices"][0]["turns"][0])
+    if answer_a_lang in GLOT_LANG_DICT:
+        answer_a_lang = GLOT_LANG_DICT[answer_a_lang]
+    if answer_b_lang in GLOT_LANG_DICT: 
+        answer_b_lang = GLOT_LANG_DICT[answer_b_lang]
+    print(f"Target lang is {target_lang}. Model A is {answer_a_lang} ({answer_a_prob:.2f}). Model B is {answer_b_lang} ({answer_b_prob:.2f}).")
     if (answer_a_lang == target_lang and answer_b_lang == target_lang) and (answer_a_prob >= LANG_THRESH and answer_b_prob >= LANG_THRESH) :
         message_template = """ Target lang is {}. Model A is {} ({}). Model B is {} ({}). """
         message = message_template.format(target_lang, answer_a_lang, round(answer_a_prob, 2), answer_b_lang, round(answer_b_prob, 2))
         print("\nmessage:", message)
-
         if multi_turn:
             system_prompt = judge.prompt_template["system_prompt"]
             user_prompt = judge.prompt_template["prompt_template"].format(
@@ -333,9 +376,9 @@ def run_judge_pair(question, answer_a, answer_b, judge, ref_answer, multi_turn=F
     else:
         user_prompt = "NA"
         judgment_template = """Language error. Target lang is {}. Model A is {} ({}). Model B is {} ({}).\n\nFinal verdict: [[{}]] """
-        if (answer_a_lang == target_lang and answer_b_lang != target_lang and answer_a_prob >= LANG_THRESH) or (answer_b_lang == target_lang and answer_b_prob < LANG_THRESH and answer_a_lang == target_lang and answer_a_prob >= LANG_THRESH):
+        if (answer_a_lang == target_lang and answer_b_lang != target_lang and answer_a_prob > LANG_THRESH) or (answer_b_lang == target_lang and answer_b_prob < LANG_THRESH and answer_a_lang == target_lang and answer_a_prob > LANG_THRESH):
             winner = "A"
-        elif (answer_a_lang != target_lang and answer_b_lang == target_lang and answer_b_prob >= LANG_THRESH) or (answer_a_lang == target_lang and answer_a_prob < LANG_THRESH and answer_b_lang == target_lang and answer_b_prob >= LANG_THRESH):
+        elif (answer_a_lang != target_lang and answer_b_lang == target_lang and answer_b_prob > LANG_THRESH) or (answer_a_lang == target_lang and answer_a_prob < LANG_THRESH and answer_b_lang == target_lang and answer_b_prob > LANG_THRESH):
             winner = "B"
         else:
             winner = "error"
@@ -531,6 +574,33 @@ def chat_completion_openai_azure(model, conv, temperature, max_tokens, api_dict=
     return output
 
 
+# def chat_completion_anthropic(model, conv, temperature, max_tokens, api_dict=None):
+#     if api_dict is not None and "api_key" in api_dict:
+#         api_key = api_dict["api_key"]
+#     else:
+#         api_key = os.environ["ANTHROPIC_API_KEY"]
+
+#     output = API_ERROR_OUTPUT
+#     for _ in range(API_MAX_RETRY):
+#         try:
+#             c = anthropic.Anthropic(api_key=api_key)
+#             prompt = conv.get_prompt()
+#             print("PROMPT:", prompt)
+#             response = c.completions.create(
+#                 model=model,
+#                 prompt=prompt,
+#                 stop_sequences=[anthropic.HUMAN_PROMPT],
+#                 max_tokens_to_sample=max_tokens,
+#                 temperature=temperature,
+#             )
+#             output = response.completion
+#             break
+#         except anthropic.APIError as e:
+#             print(type(e), e)
+#             time.sleep(API_RETRY_SLEEP)
+#     return output.strip()
+
+# Anthropic: use Messages API instead of Text Completion API
 def chat_completion_anthropic(model, conv, temperature, max_tokens, api_dict=None):
     if api_dict is not None and "api_key" in api_dict:
         api_key = api_dict["api_key"]
@@ -541,21 +611,32 @@ def chat_completion_anthropic(model, conv, temperature, max_tokens, api_dict=Non
     for _ in range(API_MAX_RETRY):
         try:
             c = anthropic.Anthropic(api_key=api_key)
-            prompt = conv.get_prompt()
-            response = c.completions.create(
+            messages = conv.to_anthropic_api_messages()
+            print("CONV:\n", conv)
+            print("SYSTEM:\n", conv.system_message)
+            print("messages:\n", messages)
+            # response = c.completions.create(
+            #     model=model,
+            #     prompt=prompt,
+            #     stop_sequences=[anthropic.HUMAN_PROMPT],
+            #     max_tokens_to_sample=max_tokens,
+            #     temperature=temperature,
+            # )
+            response = c.messages.create(
                 model=model,
-                prompt=prompt,
-                stop_sequences=[anthropic.HUMAN_PROMPT],
-                max_tokens_to_sample=max_tokens,
-                temperature=temperature,
+                max_tokens=max_tokens,
+                system=conv.system_message,
+                messages=messages,
+                temperature=temperature
             )
-            output = response.completion
+            # print("RESPONSE:\n", response)
+            output = response.content[0].text
+            print("TEXT RESPONSE:\n", output)
             break
         except anthropic.APIError as e:
             print(type(e), e)
             time.sleep(API_RETRY_SLEEP)
     return output.strip()
-
 
 def chat_completion_palm(chat_state, model, conv, temperature, max_tokens):
     from fastchat.serve.api_provider import init_palm_chat
@@ -773,49 +854,3 @@ def get_model_list(answer_dir):
     file_paths = glob.glob(f"{answer_dir}/*.jsonl")
     file_names = [os.path.splitext(os.path.basename(f))[0] for f in file_paths]
     return file_names
-
-def get_lang_code_dict(value:str) -> dict:
-    """
-    Read in a csv file with alpha 2 and 3 language codes and the language name
-    Given either a language name or an alpha 2 or alpha 3 code, return a dict of the row or None
-    Query the dict with the desired value, either: alpha3-b, alpha3-t, alpha2, English, French
-    """
-    # Read the CSV file into a DataFrame
-    df = pd.read_csv('/scratch/project_462000353/maribarr/FastChat/fastchat/llm_judge/data/lang_codes.csv', 
-                     comment='#')
-    row = None     
-    for i in range(df.shape[1]):
-        # Check if the value is in either column
-        if value in df.iloc[:, i].values:
-            row = df[df.iloc[:, i] == value]
-            # returns the first match - it will not work if there are ambiguities
-            row_dict = row.to_dict(orient='records')[0]
-            return row_dict
-    if row == None:
-        return {}
-
-def detect_language_fasttext(text):
-    """Given a text, it returns the FastText prediction as NLLB language code, e.g., Latn-eng
-    """
-    model_path = hf_hub_download(repo_id="facebook/fasttext-language-identification", filename="model.bin")
-    model = fasttext.load_model(model_path)
-
-    lab, score = model.predict(text)
-    first = lab[0]
-    return first
-
-def detect_language_glotlid(text):
-    """Given a text, it returns the Glotlid prediction as NLLB language code, e.g., Latn-eng
-    """
-    model_path = hf_hub_download(repo_id="cis-lmu/glotlid", filename="model.bin")   
-    model = fasttext.load_model(model_path)
-
-    lab, score = model.predict(text)
-    first = lab[0]
-    return first
-
-def detect_language_heli(text):
-    i = Identifier()
-    three_ltr_code = i.identify(text)
-    return three_ltr_code
-
