@@ -1,10 +1,10 @@
 # LumiOpen README
 
-This MTBench fork is designed for multilingual MTBench evaluation. We translated the MTBench questions and reference answers into several languages (Finnish, Swedish, Danish, Icelandic, and Norwegian) using DeepL. 
+This MTBench fork is designed for multilingual MTBench evaluation. We translated the MTBench questions and reference answers into several languages using DeepL. Currently we support the 24 official EU languages plus Norwegian and Icelandic.
 
 See the `run_scripts` directory for examples on how to generate model responses and GPT-4 judgments for different languages. Basically, add `--lang [LANG_CODE]` when generating model responses and judgments, and displaying results.
 
-This fork checks the response language before passing the responses to GPT-4 (or other judge model) for judging. This requires the fasttext langid ([lid.176.bin](https://fasttext.cc/docs/en/language-identification.html)) in [fastchat/llm_judge](https://github.com/LumiOpen/FastChat/tree/main/fastchat/llm_judge)
+For non-English languages, we check the response language before passing the responses to GPT-4 (or other judge model) for judging. This requires the glotlid model. [Download](https://huggingface.co/cis-lmu/glotlid) the model and place it on the `llm_judge` folder. 
 
 ## Base model few-shot prompting
 
