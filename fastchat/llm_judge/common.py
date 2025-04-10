@@ -104,6 +104,7 @@ GLOT_LANG_DICT = {
     'eng': 'en',  # English
     'spa': 'es',  # Spanish
     'est': 'et',  # Estonian
+    'ekk': 'et',  # Standard Estonian
     'fin': 'fi',  # Finnish
     'fra': 'fr',  # French
     'gle': 'ga',  # Irish
@@ -112,6 +113,7 @@ GLOT_LANG_DICT = {
     'ita': 'it',  # Italian
     'lit': 'lt',  # Lithuanian
     'lav': 'lv',  # Latvian
+    'lvs': 'lv',  # Standard Latvian
     'mlt': 'mt',  # Maltese
     'nld': 'nl',  # Dutch
     'pol': 'pl',  # Polish
