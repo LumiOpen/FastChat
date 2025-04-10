@@ -74,7 +74,7 @@ def get_answer(
 
     os.makedirs(os.path.dirname(answer_file), exist_ok=True)
     with open(answer_file, "a") as fout:
-        fout.write(json.dumps(ans) + "\n")
+        fout.write(json.dumps(ans, ensure_ascii=False) + "\n")
 
 
 if __name__ == "__main__":
@@ -129,13 +129,13 @@ if __name__ == "__main__":
     print(f"Load questions from {question_file}")
     questions = load_questions(question_file, args.question_begin, args.question_end)
 
-    question_file = f"data/{args.bench_name}/question.jsonl"
-    questions = load_questions(question_file, args.question_begin, args.question_end)
-
     if args.answer_file:
         answer_file = args.answer_file
     else:
-        answer_file = f"data/{args.bench_name}/model_answer/{args.model}.jsonl"
+        if args.lang != 'en':
+            answer_file = f"data/{args.bench_name}/model_answer/{args.model}_{args.lang}.jsonl"
+        else:    
+            answer_file = f"data/{args.bench_name}/model_answer/{args.model}.jsonl"
     print(f"Output to {answer_file}")
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.parallel) as executor:
