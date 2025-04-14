@@ -93,6 +93,9 @@ FASTTEXT_LID_BINARY = "./lid.176.bin"
 LID_MODEL = fasttext.load_model(FASTTEXT_LID_BINARY)
 GLOTLID_PATH = "./model.bin"
 GLOT_MODEL = fasttext.load_model(GLOTLID_PATH)
+from heliport import Identifier
+HELI_MODEL = Identifier()
+
 LANG_THRESH = 0.5
 
 GLOT_LANG_DICT = {
@@ -142,6 +145,11 @@ def detect_language(sent: str):
     # get prob of top language
     prob = pred[1][0]
     return lang, prob
+
+def detect_language_heli(text):
+     # i = Identifier()
+     lang, score = HELI_MODEL.identify_with_score(text)
+     return lang, score
 
 def load_questions(question_file: str, begin: Optional[int], end: Optional[int]):
     """Load questions from a file."""
@@ -201,12 +209,18 @@ def run_judge_single(question, answer, judge, ref_answer, multi_turn=False, targ
         # check if language of question turn 2 and answer turn 2 are the same
         # question_lang, question_prob = detect_language(question["turns"][1])
         # answer_lang, answer_prob = detect_language(answer["choices"][0]["turns"][1])
-        answer_lang, answer_prob = detect_language_glotlid(answer["choices"][0]["turns"][1])
+        if target_lang == 'fi':
+            answer_lang, answer_prob = detect_language_heli(answer["choices"][0]["turns"][1])
+        else:
+            answer_lang, answer_prob = detect_language_glotlid(answer["choices"][0]["turns"][1])
     else:
         # check if language question turn 1 and answer turn 1 are the same
         # question_lang, question_prob = detect_language(question["turns"][0])
         # answer_lang, answer_prob = detect_language(answer["choices"][0]["turns"][0])
-        answer_lang, answer_prob = detect_language_glotlid(answer["choices"][0]["turns"][0])
+        if target_lang == 'fi':
+            answer_lang, answer_prob = detect_language_heli(answer["choices"][0]["turns"][0])
+        else:
+            answer_lang, answer_prob = detect_language_glotlid(answer["choices"][0]["turns"][0])
     if answer_lang in GLOT_LANG_DICT:
         answer_lang = GLOT_LANG_DICT[answer_lang]
     if target_lang == 'en' or (answer_lang == target_lang and answer_prob > LANG_THRESH):
@@ -321,13 +335,21 @@ def run_judge_pair(question, answer_a, answer_b, judge, ref_answer, multi_turn=F
     if multi_turn:
         # check if language of question turn 2 and answer turn 2 are the same
         # question_lang, question_prob = detect_language(question["turns"][1])
-        answer_a_lang, answer_a_prob = detect_language_glotlid(answer_a["choices"][0]["turns"][1])
-        answer_b_lang, answer_b_prob = detect_language_glotlid(answer_b["choices"][0]["turns"][1])
+        if target_lang == 'fi':
+            answer_a_lang, answer_a_prob = detect_language_heli(answer_a["choices"][0]["turns"][1])
+            answer_b_lang, answer_b_prob = detect_language_heli(answer_b["choices"][0]["turns"][1])
+        else:            
+            answer_a_lang, answer_a_prob = detect_language_glotlid(answer_a["choices"][0]["turns"][1])
+            answer_b_lang, answer_b_prob = detect_language_glotlid(answer_b["choices"][0]["turns"][1])
     else:
         # check if language question turn 1 and answer turn 1 are the same
         # question_lang, question_prob = detect_language(question["turns"][0])
-        answer_a_lang, answer_a_prob = detect_language_glotlid(answer_a["choices"][0]["turns"][0])
-        answer_b_lang, answer_b_prob = detect_language_glotlid(answer_b["choices"][0]["turns"][0])
+        if target_lang == 'fi':
+            answer_a_lang, answer_a_prob = detect_language_heli(answer_a["choices"][0]["turns"][0])
+            answer_b_lang, answer_b_prob = detect_language_heli(answer_b["choices"][0]["turns"][0])
+        else:
+            answer_a_lang, answer_a_prob = detect_language_glotlid(answer_a["choices"][0]["turns"][0])
+            answer_b_lang, answer_b_prob = detect_language_glotlid(answer_b["choices"][0]["turns"][0])
     if answer_a_lang in GLOT_LANG_DICT:
         answer_a_lang = GLOT_LANG_DICT[answer_a_lang]
     if answer_b_lang in GLOT_LANG_DICT: 
