@@ -85,6 +85,11 @@ OPENAI_MODEL_LIST = (
     "im-also-a-good-gpt2-chatbot",
     "im-a-good-gpt2-chatbot",
     "gpt-4o-2024-05-13",
+    "gpt-4o-2024-08-06",
+    "chatgpt-4o-latest-20240903",
+    "chatgpt-4o-latest",
+    "o1-preview",
+    "o1-mini",
 )
 
 
@@ -98,18 +103,25 @@ class BaseModelAdapter:
 
     def load_model(self, model_path: str, from_pretrained_kwargs: dict):
         revision = from_pretrained_kwargs.get("revision", "main")
+        self.use_fast_tokenizer = True
         try:
+            print("Load tokenizer")
+            print("revision:", revision)
+            print("use_fast_tokenizer:", self.use_fast_tokenizer)
             tokenizer = AutoTokenizer.from_pretrained(
                 model_path,
                 use_fast=self.use_fast_tokenizer,
                 revision=revision,
                 trust_remote_code=True,
             )
+            # print("tokenizer:", tokenizer)
         except TypeError:
             tokenizer = AutoTokenizer.from_pretrained(
                 model_path, use_fast=False, revision=revision, trust_remote_code=True
             )
         try:
+            print("Load model:", model_path)
+            print("from_pretrained_kwargs:", from_pretrained_kwargs)
             model = AutoModelForCausalLM.from_pretrained(
                 model_path,
                 low_cpu_mem_usage=True,
@@ -229,7 +241,7 @@ def load_model(
                     "Intel Extension for PyTorch is not installed, it can be installed to accelerate cpu inference"
                 )
     elif device == "cuda":
-        kwargs = {"torch_dtype": torch.float16}
+        kwargs = {"torch_dtype": torch.bfloat16}
         if num_gpus != 1:
             kwargs["device_map"] = "auto"
             if max_gpu_memory is None:
@@ -2445,31 +2457,40 @@ class RekaAdapter(BaseModelAdapter):
         return get_conv_template("api_based_default")
 
 class PoroAdapter(BaseModelAdapter):
-    """The model adapter for Poro chat (e.g. https://huggingface.co/LumiOpen/Poro-34B)"""
+    """The model adapter for Poro chat (e.g. https://huggingface.co/LumiOpen/Poro-34B-chat)"""
 
     def match(self, model_path: str):
-        return "poro" in model_path.lower()
+        return "poro" in model_path.lower() and "poro-base" not in model_path.lower()
 
     def get_default_conv_template(self, model_path: str) -> Conversation:
         return get_conv_template("poro")
 
-class EuropaAdapter(BaseModelAdapter):
-    """The model adapter for Europa chat"""
+class BasePoroAdapter(BaseModelAdapter):
+    """The model adapter for Poro chat (e.g. https://huggingface.co/LumiOpen/Poro-34B)"""
 
     def match(self, model_path: str):
-        return "europa" in model_path.lower()
+        return "poro-base" in model_path.lower()
 
     def get_default_conv_template(self, model_path: str) -> Conversation:
-        return get_conv_template("europa")
-
+        return get_conv_template("poro-34b-base")
+    
 class VikingAdapter(BaseModelAdapter):
     """The model adapter for Viking chat"""
 
     def match(self, model_path: str):
-        return "viking" in model_path.lower()
+        return "viking" in model_path.lower() and "viking-base" not in model_path.lower()
 
     def get_default_conv_template(self, model_path: str) -> Conversation:
         return get_conv_template("viking")
+    
+class VikingBaseAdapter(BaseModelAdapter):
+    """The model adapter for Viking base"""
+
+    def match(self, model_path: str):
+        return "viking-base" in model_path.lower() 
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("viking-base-finnish")
 
 class LlamaFinnishInstructAdapter(BaseModelAdapter):
     """The model adapter for llama-7b-finnish-instruct-v0.2 (e.g. https://huggingface.co/Finnish-NLP/llama-7b-finnish-instruct-v0.2)"""
@@ -2480,6 +2501,15 @@ class LlamaFinnishInstructAdapter(BaseModelAdapter):
     def get_default_conv_template(self, model_path: str) -> Conversation:
         return get_conv_template("llama-7b-finnish-instruct")
 
+class FinnishLlama3BaseAdapter(BaseModelAdapter):
+    """The model adapter for Llama CPT"""
+
+    def match(self, model_path: str):
+        return "finnish-llama-3.1" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("finnish-llama-3.1")
+    
 class FinnishMistralChatAdapter(BaseModelAdapter):
     """The model adapter for Mistral CPT"""
 
@@ -2533,15 +2563,6 @@ class SwedishMistralBaseAdapter(BaseModelAdapter):
 
     def get_default_conv_template(self, model_path: str) -> Conversation:
         return get_conv_template("swedish-mistral-7b-base")
-
-class MistralBaseAdapter(BaseModelAdapter):
-    """The model adapter for Mistral CPT"""
-
-    def match(self, model_path: str):
-        return "mistral-7b-v0.2-finnish" in model_path.lower()
-
-    def get_default_conv_template(self, model_path: str) -> Conversation:
-        return get_conv_template("finnish-mistral-7b-base")
     
 class SwedishLlama3ChatAdapter(BaseModelAdapter):
     """The model adapter for Mistral CPT"""
@@ -2565,21 +2586,56 @@ class Llama3BaseAdapter(BaseModelAdapter):
     """The model adapter for Mistral CPT"""
 
     def match(self, model_path: str):
-        return "llama-3.1-base" in model_path.lower()
+        return "english-llama-3.1" in model_path.lower()
 
     def get_default_conv_template(self, model_path: str) -> Conversation:
-        return get_conv_template("llama-3.1")
+        return get_conv_template("english-llama-3.1")
 
-
-class FinnishLlama3BaseAdapter(BaseModelAdapter):
+class MistralBaseAdapter(BaseModelAdapter):
     """The model adapter for Mistral CPT"""
 
     def match(self, model_path: str):
-        return "finnish-llama-3.1" in model_path.lower()
+        return "english-mistral" in model_path.lower()
 
     def get_default_conv_template(self, model_path: str) -> Conversation:
-        return get_conv_template("finnish-llama-3.1")
-    
+        return get_conv_template("english-mistral")
+
+class GPTSW3Adapter(BaseModelAdapter):
+    """The model adapter for  GPT-SW3"""
+
+    def match(self, model_path: str):
+        return "gpt-sw3" in model_path.lower() 
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("gpt-sw3")
+
+class EuroLLMAdapter(BaseModelAdapter):
+    """The model adapter for EuroLLM"""
+
+    def match(self, model_path: str):
+        return "eurollm" in model_path.lower() 
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("eurollm")
+
+class SalamandraAdapter(BaseModelAdapter):
+    """The model adapter for Salamandra"""
+
+    def match(self, model_path: str):
+        return "salamandra" in model_path.lower() 
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("salamandra")
+
+class EuropaAdapter(BaseModelAdapter):
+    """The model adapter for Europa chat"""
+
+    def match(self, model_path: str):
+        return "europa" in model_path.lower() 
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("europa")
+
 class FinnishLlama3ChatAdapter(BaseModelAdapter):
     """The model adapter for Llama CPT"""
 
@@ -2588,24 +2644,40 @@ class FinnishLlama3ChatAdapter(BaseModelAdapter):
 
     def get_default_conv_template(self, model_path: str) -> Conversation:
         return get_conv_template("finnish-llama-chat")
+
+class FinnishLlama3PoroTokenizerAdapter(BaseModelAdapter):
+    """The model adapter for Llama CPT"""
+
+    def match(self, model_path: str):
+        return "finnish-llama-3" in model_path.lower() and "poro-tokenizer" in model_path.lower()
+
+    def get_default_conv_template(self, model_path: str) -> Conversation:
+        return get_conv_template("finnish-llama-3-poro-tokenizer")
     
 # Note: the registration order matters.
 # The one registered earlier has a higher matching priority.
+register_model_adapter(FinnishLlama3PoroTokenizerAdapter)
+register_model_adapter(Llama3Adapter)
 register_model_adapter(FinnishLlama3ChatAdapter)
+register_model_adapter(EuropaAdapter)
+register_model_adapter(SalamandraAdapter)
+register_model_adapter(EuroLLMAdapter)
+register_model_adapter(VikingAdapter)
+register_model_adapter(GPTSW3Adapter)
+register_model_adapter(Llama3BaseAdapter)
+register_model_adapter(VikingBaseAdapter)
+register_model_adapter(BasePoroAdapter)
 register_model_adapter(FinnishLlama3BaseAdapter)
 register_model_adapter(FinnishAmberBaseAdapter)
 register_model_adapter(FinnishSalamandraBaseAdapter)
 register_model_adapter(FinnishMistralBaseAdapter)
-register_model_adapter(Llama3BaseAdapter)
 register_model_adapter(MistralBaseAdapter)
 register_model_adapter(SwedishLlama3BaseAdapter)
 register_model_adapter(SwedishMistralBaseAdapter)
 register_model_adapter(SwedishLlama3ChatAdapter)
 register_model_adapter(FinnishMistralChatAdapter)
 register_model_adapter(SwedishMistralChatAdapter)
-register_model_adapter(VikingAdapter)
 register_model_adapter(PoroAdapter)
-register_model_adapter(EuropaAdapter)
 register_model_adapter(PeftModelAdapter)
 register_model_adapter(StableVicunaAdapter)
 register_model_adapter(VicunaAdapter)
@@ -2703,7 +2775,6 @@ register_model_adapter(YandexGPTAdapter)
 register_model_adapter(CllmAdapter)
 register_model_adapter(RekaAdapter)
 register_model_adapter(SmaugChatAdapter)
-register_model_adapter(Llama3Adapter)
 
 # After all adapters, try the default base adapter.
 register_model_adapter(BaseModelAdapter)
