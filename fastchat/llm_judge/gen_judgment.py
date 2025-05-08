@@ -180,7 +180,7 @@ if __name__ == "__main__":
         default="data/judge_prompts.jsonl",
         help="The file of judge prompts.",
     )
-    parser.add_argument("--judge-model", type=str, default="gpt-4")
+    parser.add_argument("--judge-model", type=str, default="gpt-4o-2024-08-06", help="Use gpt-4o as the default judge since it is cheaper.")
     parser.add_argument("--baseline-model", type=str, default="gpt-3.5-turbo")
     parser.add_argument(
         "--mode",
@@ -207,22 +207,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "--first-n", type=int, help="A debug option. Only run the first `n` judgments."
     )
-    parser.add_argument(
-        "--lang", type=str, default="en", help="supported langs: en, fi, sv, no, da, is"
-    )
+    parser.add_argument("--lang", type=str, default="en")
     args = parser.parse_args()
 
     if args.lang != "en":
-        question_file = f"data/{args.bench_name}/question_{args.lang}.jsonl"        
+        question_file = f"data/{args.bench_name}/question_{args.lang}.jsonl"
+        ref_answer_dir = f"data/{args.bench_name}/reference_answer/{args.lang}"
     else:
         question_file = f"data/{args.bench_name}/question.jsonl"
-    answer_dir = f"data/{args.bench_name}/model_answer"
-
-    if args.lang != "en":
-        ref_answer_dir = f"data/{args.bench_name}/reference_answer/{args.lang}"
-    else:    
         ref_answer_dir = f"data/{args.bench_name}/reference_answer"
-
+    answer_dir = f"data/{args.bench_name}/model_answer"
+    print("Question file:", question_file)
+    print("Reference answer dir:", ref_answer_dir)
+    print("Answer dir:", answer_dir)
     # Load questions
     questions = load_questions(question_file, None, None)
 
@@ -252,6 +249,7 @@ if __name__ == "__main__":
             output_file = (
                 f"data/{args.bench_name}/model_judgment/{args.judge_model}_single.jsonl"
             )
+        print("Output file:", output_file)
         make_match_func = make_match_single
         baseline_model = None
     else:
@@ -261,10 +259,11 @@ if __name__ == "__main__":
             output_file = (
                 f"data/{args.bench_name}/model_judgment/{args.judge_model}_pair_{args.lang}.jsonl"
             )
-        else:            
+        else:
             output_file = (
                 f"data/{args.bench_name}/model_judgment/{args.judge_model}_pair.jsonl"
             )
+        print("Output file:", output_file)
         if args.mode == "pairwise-all":
             make_match_func = make_match_all_pairs
             baseline_model = None
