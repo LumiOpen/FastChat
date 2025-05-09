@@ -5,8 +5,6 @@ python3 show_result.py --mode [single|pairwise-baseline|pairwise-all]
 import argparse
 import pandas as pd
 import json
-pd.set_option('display.max_columns', None)
-
 
 def display_result_single_by_category(args):
     if args.lang != 'en':
@@ -59,12 +57,15 @@ def display_result_single(args):
 
     print(f"Input file: {input_file}")
     df_all = pd.read_json(input_file, lines=True)
-    df = df_all[["model", "score", "turn"]]
+    df = df_all[["model", "score", "turn", "judgment"]]
     df = df[df["score"] != -1]
 
     if args.model_list is not None:
         df = df[df["model"].isin(args.model_list)]
 
+    print("\n########## Language check ##########")
+    print("Language mismatch:", df[df.judgment.str.contains("Language error")].shape[0])
+    df = df[["model", "score", "turn"]]
     print("\n########## First turn ##########")
     df_1 = df[df["turn"] == 1].groupby(["model", "turn"]).mean()
     print(df_1.sort_values(by="score", ascending=False))
@@ -165,7 +166,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--bench-name", type=str, default="mt_bench")
     parser.add_argument("--input-file", type=str)
-    parser.add_argument("--judge-model", type=str, default="gpt-4")
+    parser.add_argument("--judge-model", type=str, default="gpt-4o-2024-08-06", help="gpt-4o-2024-08-06, gpt-4o is the default judge")
     parser.add_argument("--baseline-model", type=str, default="gpt-3.5-turbo")
     parser.add_argument(
         "--model-list",
