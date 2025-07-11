@@ -1,6 +1,6 @@
 # LumiOpen README
 
-This MTBench fork is designed for multilingual MTBench evaluation. We translated the MTBench questions and reference answers into several languages using DeepL. Currently we support the 24 official EU languages plus Norwegian and Icelandic. The Finnish, Danish, Slovak, and Czech translations have been corrected by fluent speakers. The Icelandic translation was provided by [Miðeind](https://mideind.is/en).
+This MTBench fork is designed for multilingual MTBench evaluation. We translated the MTBench questions and reference answers into several languages using DeepL. Currently we support the 24 official EU languages plus Norwegian and Icelandic. The Finnish, Danish, Slovak, and Czech translations have been reviewed and corrected by fluent speakers. The Icelandic translation was provided by [Miðeind](https://mideind.is/en).
 
 See the `run_scripts` directory for examples on how to generate model responses and GPT-4 judgments for different languages. Basically, add `--lang [LANG_CODE]` when generating model responses and judgments, and displaying results.
 
