@@ -2809,6 +2809,18 @@ Varje typ av förnybar energikälla har sina egna fördelar och utmaningar, men 
     )
 )
 
+register_conv_template(
+    Conversation(
+        name="apertus",
+        system_template="",
+        roles=("<|user_start|>", "<|assistant_start|>"),
+        sep_style=SeparatorStyle.CHATML,
+        sep="<|user_end|>",
+        sep2="<|assistant_end|>",
+        stop_token_ids=[2, 68, 72],
+    )
+)
+
 if __name__ == "__main__":
     from fastchat.conversation import get_conv_template
 
